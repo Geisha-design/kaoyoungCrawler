@@ -1,0 +1,84 @@
+package smartebao.guide.entity;
+
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
+import lombok.Data;
+
+import java.util.Date;
+
+@Data
+@TableName("crawler_script")
+public class CrawlerScript {
+    @TableId(type = IdType.AUTO)
+    private Long id;
+    
+    private String scriptId;
+    
+    private String taskType;
+    
+    private String scriptContent;
+    
+    private String description;
+    
+    private String domainPattern; // 匹配域名正则表达式
+    
+    private Date updateTime;
+
+    // 自动生成的Getter和Setter方法
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getScriptId() {
+        return scriptId;
+    }
+
+    public void setScriptId(String scriptId) {
+        this.scriptId = scriptId;
+    }
+
+    public String getTaskType() {
+        return taskType;
+    }
+
+    public void setTaskType(String taskType) {
+        this.taskType = taskType;
+    }
+
+    public String getScriptContent() {
+        return scriptContent;
+    }
+
+    public void setScriptContent(String scriptContent) {
+        this.scriptContent = scriptContent;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public String getDomainPattern() {
+        return domainPattern;
+    }
+
+    public void setDomainPattern(String domainPattern) {
+        this.domainPattern = domainPattern;
+    }
+
+    public Date getUpdateTime() {
+        return updateTime;
+    }
+
+    public void setUpdateTime(Date updateTime) {
+        this.updateTime = updateTime;
+    }
+}

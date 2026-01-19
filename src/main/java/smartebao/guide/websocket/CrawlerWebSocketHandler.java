@@ -1,0 +1,432 @@
+package smartebao.guide.websocket;
+
+import com.alibaba.fastjson.JSON;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.stereotype.Component;
+import smartebao.guide.entity.CrawlerResult;
+import smartebao.guide.entity.CrawlerScript;
+import smartebao.guide.mapper.CrawlerClientMapper;
+import smartebao.guide.mapper.CrawlerResultMapper;
+import smartebao.guide.service.WebSocketService;
+import smartebao.guide.utils.JwtUtil;
+
+import javax.websocket.*;
+import javax.websocket.server.ServerEndpoint;
+import java.io.IOException;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+@ServerEndpoint(value = "/ws", configurator = WebSocketConfigurator.class)
+@Component
+public class CrawlerWebSocketHandler {
+
+    // 存储在线客户端会话
+    private static Map<String, Session> sessionMap = new ConcurrentHashMap<>();
+    
+    // 存储客户端信息
+    private static Map<String, String> clientInfoMap = new ConcurrentHashMap<>();
+
+    @Autowired
+    private JwtUtil jwtUtil;
+
+    @Autowired
+    @Lazy
+    private CrawlerClientMapper crawlerClientMapper;
+
+    @Autowired
+    @Lazy
+    private CrawlerResultMapper crawlerResultMapper;
+
+    @Autowired
+    private WebSocketService webSocketService;
+
+    /**
+     * 连接建立成功调用的方法
+     */
+    @OnOpen
+    public void onOpen(Session session) {
+        // 从session中获取JWT token进行验证
+        String token = getSessionAttribute(session, "token");
+        if (token == null || !jwtUtil.validateToken(token)) {
+            try {
+                session.close();
+                return;
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        
+        System.out.println("WebSocket连接建立成功");
+    }
+
+    /**
+     * 连接关闭调用的方法
+     */
+    @OnClose
+    public void onClose(Session session) {
+        String clientId = getSessionAttribute(session, "clientId");
+        if (clientId != null) {
+            sessionMap.remove(clientId);
+            clientInfoMap.remove(clientId);
+            
+            // 更新客户端状态为offline
+            webSocketService.updateClientStatus(clientId, "offline");
+            
+            System.out.println("客户端 " + clientId + " 已断开连接");
+        }
+    }
+
+    /**
+     * 收到客户端消息后的处理
+     */
+    @OnMessage
+    public void onMessage(String message, Session session) {
+        try {
+            // 解析消息
+            MessageInfo msgInfo = JSON.parseObject(message, MessageInfo.class);
+            String type = msgInfo.getType();
+            String clientId = msgInfo.getClientId();
+
+            switch (type) {
+                case "register":
+                    handleRegister(msgInfo, session);
+                    break;
+                case "url_change":
+                    handleUrlChange(msgInfo);
+                    break;
+                case "crawl_result":
+                    handleCrawlResult(msgInfo);
+                    break;
+                default:
+                    System.out.println("收到未知类型消息: " + type);
+                    break;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 错误发生时的处理
+     */
+    @OnError
+    public void onError(Session session, Throwable error) {
+        System.out.println("WebSocket发生错误: " + error.getMessage());
+        error.printStackTrace();
+    }
+
+    /**
+     * 处理客户端注册
+     */
+    private void handleRegister(MessageInfo msgInfo, Session session) {
+        try {
+            RegisterPayload payload = JSON.toJavaObject((JSON) JSON.toJSON(msgInfo.getPayload()), RegisterPayload.class);
+            String clientId = msgInfo.getClientId();
+            String username = payload.getUsername();
+            String currentUrl = payload.getCurrentUrl();
+            String supportTaskTypes = payload.getSupportTaskTypes();
+
+            // 保存或更新客户端信息
+            smartebao.guide.entity.CrawlerClient client = crawlerClientMapper.selectOne(
+                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<smartebao.guide.entity.CrawlerClient>()
+                    .eq("client_id", clientId));
+            if (client == null) {
+                client = new smartebao.guide.entity.CrawlerClient();
+                client.setClientId(clientId);
+                client.setUsername(username);
+                client.setConnectTime(new Date());
+                crawlerClientMapper.insert(client);
+            } else {
+                client.setCurrentUrl(currentUrl);
+                client.setSupportTaskTypes(supportTaskTypes);
+                client.setStatus("online");
+                client.setLastUpdateTime(new Date());
+                crawlerClientMapper.updateById(client);
+            }
+
+            // 发送认证成功消息
+            AuthSuccessMessage authMsg = new AuthSuccessMessage();
+            authMsg.setType("auth_success");
+            authMsg.setPayload(new AuthSuccessPayload(clientId));
+            authMsg.setClientId(clientId);
+            authMsg.setTimestamp(System.currentTimeMillis());
+            sendMessage(session, JSON.toJSONString(authMsg));
+
+            // 存储会话
+            sessionMap.put(clientId, session);
+            clientInfoMap.put(clientId, username);
+
+            // 批量下发脚本
+            sendScriptsToClient(clientId, "batch");
+
+            // 同步定时任务配置
+            syncScheduledTaskConfig(clientId);
+
+            System.out.println("客户端 " + clientId + " 注册成功");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 处理网址变化
+     */
+    private void handleUrlChange(MessageInfo msgInfo) {
+        try {
+            UrlChangePayload payload = JSON.toJavaObject((JSON) JSON.toJSON(msgInfo.getPayload()), UrlChangePayload.class);
+            String clientId = msgInfo.getClientId();
+            String currentUrl = payload.getCurrentUrl();
+
+            // 更新客户端网址
+            webSocketService.updateClientUrl(clientId, currentUrl);
+
+            System.out.println("客户端 " + clientId + " 网址更新为: " + currentUrl);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 处理爬取结果
+     */
+    private void handleCrawlResult(MessageInfo msgInfo) {
+        try {
+            CrawlResultPayload payload = JSON.toJavaObject((JSON) JSON.toJSON(msgInfo.getPayload()), CrawlResultPayload.class);
+            String clientId = msgInfo.getClientId();
+            String taskId = payload.getTaskId();
+            Object crawlData = payload.getCrawlData();
+            String crawlStatus = payload.getCrawlStatus();
+
+            // 保存爬取结果
+            webSocketService.saveCrawlResult(taskId, clientId, crawlData, crawlStatus);
+
+            System.out.println("收到客户端 " + clientId + " 的爬取结果，任务ID: " + taskId);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 批量下发脚本到客户端
+     */
+    public void sendScriptsToClient(String clientId, String pushType) {
+        try {
+            Session session = sessionMap.get(clientId);
+            if (session == null) {
+                System.out.println("客户端 " + clientId + " 不在线，无法下发脚本");
+                return;
+            }
+
+            // 查询所有脚本
+            List<CrawlerScript> scripts = webSocketService.getAllScripts();
+
+            // 构造脚本下发消息
+            ScriptPushMessage scriptMsg = new ScriptPushMessage();
+            scriptMsg.setType("script_push");
+            scriptMsg.setPayload(new ScriptPushPayload(scripts, pushType));
+            scriptMsg.setClientId(clientId);
+            scriptMsg.setTimestamp(System.currentTimeMillis());
+
+            sendMessage(session, JSON.toJSONString(scriptMsg));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 定向下发脚本到指定客户端
+     */
+    public void sendDesignatedScriptsToClient(String clientId, List<String> scriptIds) {
+        try {
+            Session session = sessionMap.get(clientId);
+            if (session == null) {
+                System.out.println("客户端 " + clientId + " 不在线，无法定向下发脚本");
+                return;
+            }
+
+            // 根据脚本ID列表查询脚本
+            List<CrawlerScript> scripts = webSocketService.getScriptsByIds(scriptIds);
+
+            // 构造定向脚本下发消息
+            ScriptPushMessage scriptMsg = new ScriptPushMessage();
+            scriptMsg.setType("script_designated_push");
+            scriptMsg.setPayload(new ScriptPushPayload(scripts, "designated"));
+            scriptMsg.setClientId(clientId);
+            scriptMsg.setTimestamp(System.currentTimeMillis());
+
+            sendMessage(session, JSON.toJSONString(scriptMsg));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 同步定时任务配置到客户端
+     */
+    private void syncScheduledTaskConfig(String clientId) {
+        // TODO: 实现定时任务配置同步逻辑
+        System.out.println("同步定时任务配置到客户端 " + clientId);
+    }
+
+    /**
+     * 发送消息到指定会话
+     */
+    private void sendMessage(Session session, String message) {
+        try {
+            if (session.isOpen()) {
+                session.getBasicRemote().sendText(message);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 获取会话属性
+     */
+    private String getSessionAttribute(Session session, String key) {
+        Object obj = session.getUserProperties().get(key);
+        return obj != null ? obj.toString() : null;
+    }
+
+    /**
+     * 获取在线客户端数量
+     */
+    public static int getOnlineCount() {
+        return sessionMap.size();
+    }
+
+    /**
+     * 获取指定客户端的会话
+     */
+    public static Session getClientSession(String clientId) {
+        return sessionMap.get(clientId);
+    }
+
+    /**
+     * 检查客户端是否在线
+     */
+    public static boolean isClientOnline(String clientId) {
+        Session session = sessionMap.get(clientId);
+        return session != null && session.isOpen();
+    }
+
+    // 内部消息类定义
+    public static class MessageInfo {
+        private String type;
+        private Object payload;
+        private String clientId;
+        private Long timestamp;
+
+        // getter和setter
+        public String getType() { return type; }
+        public void setType(String type) { this.type = type; }
+        public Object getPayload() { return payload; }
+        public void setPayload(Object payload) { this.payload = payload; }
+        public String getClientId() { return clientId; }
+        public void setClientId(String clientId) { this.clientId = clientId; }
+        public Long getTimestamp() { return timestamp; }
+        public void setTimestamp(Long timestamp) { this.timestamp = timestamp; }
+    }
+
+    public static class RegisterPayload {
+        private String username;
+        private String currentUrl;
+        private String supportTaskTypes;
+
+        // getter和setter
+        public String getUsername() { return username; }
+        public void setUsername(String username) { this.username = username; }
+        public String getCurrentUrl() { return currentUrl; }
+        public void setCurrentUrl(String currentUrl) { this.currentUrl = currentUrl; }
+        public String getSupportTaskTypes() { return supportTaskTypes; }
+        public void setSupportTaskTypes(String supportTaskTypes) { this.supportTaskTypes = supportTaskTypes; }
+    }
+
+    public static class UrlChangePayload {
+        private String currentUrl;
+
+        // getter和setter
+        public String getCurrentUrl() { return currentUrl; }
+        public void setCurrentUrl(String currentUrl) { this.currentUrl = currentUrl; }
+    }
+
+    public static class CrawlResultPayload {
+        private String taskId;
+        private Object crawlData;
+        private String crawlStatus;
+
+        // getter和setter
+        public String getTaskId() { return taskId; }
+        public void setTaskId(String taskId) { this.taskId = taskId; }
+        public Object getCrawlData() { return crawlData; }
+        public void setCrawlData(Object crawlData) { this.crawlData = crawlData; }
+        public String getCrawlStatus() { return crawlStatus; }
+        public void setCrawlStatus(String crawlStatus) { this.crawlStatus = crawlStatus; }
+    }
+
+    public static class AuthSuccessMessage {
+        private String type;
+        private AuthSuccessPayload payload;
+        private String clientId;
+        private Long timestamp;
+
+        // getter和setter
+        public String getType() { return type; }
+        public void setType(String type) { this.type = type; }
+        public AuthSuccessPayload getPayload() { return payload; }
+        public void setPayload(AuthSuccessPayload payload) { this.payload = payload; }
+        public String getClientId() { return clientId; }
+        public void setClientId(String clientId) { this.clientId = clientId; }
+        public Long getTimestamp() { return timestamp; }
+        public void setTimestamp(Long timestamp) { this.timestamp = timestamp; }
+    }
+
+    public static class AuthSuccessPayload {
+        private String clientId;
+
+        public AuthSuccessPayload(String clientId) {
+            this.clientId = clientId;
+        }
+
+        // getter和setter
+        public String getClientId() { return clientId; }
+        public void setClientId(String clientId) { this.clientId = clientId; }
+    }
+
+    public static class ScriptPushMessage {
+        private String type;
+        private ScriptPushPayload payload;
+        private String clientId;
+        private Long timestamp;
+
+        // getter和setter
+        public String getType() { return type; }
+        public void setType(String type) { this.type = type; }
+        public ScriptPushPayload getPayload() { return payload; }
+        public void setPayload(ScriptPushPayload payload) { this.payload = payload; }
+        public String getClientId() { return clientId; }
+        public void setClientId(String clientId) { this.clientId = clientId; }
+        public Long getTimestamp() { return timestamp; }
+        public void setTimestamp(Long timestamp) { this.timestamp = timestamp; }
+    }
+
+    public static class ScriptPushPayload {
+        private List<CrawlerScript> scripts;
+        private String pushType;
+
+        public ScriptPushPayload(List<CrawlerScript> scripts, String pushType) {
+            this.scripts = scripts;
+            this.pushType = pushType;
+        }
+
+        // getter和setter
+        public List<CrawlerScript> getScripts() { return scripts; }
+        public void setScripts(List<CrawlerScript> scripts) { this.scripts = scripts; }
+        public String getPushType() { return pushType; }
+        public void setPushType(String pushType) { this.pushType = pushType; }
+    }
+}
