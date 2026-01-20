@@ -28,6 +28,8 @@ public class CrawlerClient {
     private String status;
     
     private Date lastUpdateTime;
+    
+    private Boolean idleStatus; // 空闲状态
 
     // 自动生成的Getter和Setter方法
     public Long getId() {
@@ -100,5 +102,13 @@ public class CrawlerClient {
 
     public void setLastUpdateTime(Date lastUpdateTime) {
         this.lastUpdateTime = lastUpdateTime;
+    }
+
+    public Boolean getIdleStatus() {
+        return idleStatus;
+    }
+
+    public void setIdleStatus(Boolean idleStatus) {
+        this.idleStatus = idleStatus;
     }
 }

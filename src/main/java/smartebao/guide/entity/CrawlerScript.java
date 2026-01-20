@@ -54,8 +54,18 @@ public class CrawlerScript {
         return scriptContent;
     }
 
+    // 添加别名方法，兼容可能的调用
+    public String getContent() {
+        return scriptContent;
+    }
+
     public void setScriptContent(String scriptContent) {
         this.scriptContent = scriptContent;
+    }
+
+    // 添加别名方法，兼容可能的调用
+    public void setContent(String content) {
+        this.scriptContent = content;
     }
 
     public String getDescription() {

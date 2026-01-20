@@ -1,6 +1,59 @@
 // 内容脚本 - 在网页上下文中运行
 console.log('爬虫助手内容脚本已加载');
 
+// 空闲监控相关变量
+let idleTimer = null;
+let isIdle = false;
+let idleThreshold = 300000; // 5分钟空闲阈值（毫秒）
+let lastActivityTime = Date.now();
+
+// 监听用户的活动
+function resetIdleTimer() {
+  isIdle = false;
+  lastActivityTime = Date.now();
+  
+  // 清除之前的计时器
+  if (idleTimer) {
+    clearTimeout(idleTimer);
+  }
+  
+  // 设置新的空闲检测计时器
+  idleTimer = setTimeout(goIdle, idleThreshold);
+  
+  // 通知background脚本用户变为活跃状态
+  chrome.runtime.sendMessage({
+    type: 'user_active',
+    timestamp: Date.now()
+  });
+}
+
+// 进入空闲状态
+function goIdle() {
+  isIdle = true;
+  console.log('用户进入空闲状态');
+  
+  // 通知background脚本用户进入空闲状态
+  chrome.runtime.sendMessage({
+    type: 'user_idle',
+    timestamp: Date.now()
+  });
+  
+  // 触发空闲时的任务执行
+  executeIdleTasks();
+}
+
+// 执行空闲时的任务
+function executeIdleTasks() {
+  console.log('检测到空闲状态，准备执行后台任务...');
+  
+  // 通知background脚本执行空闲任务
+  chrome.runtime.sendMessage({
+    type: 'execute_idle_tasks',
+    idleSince: lastActivityTime,
+    currentTime: Date.now()
+  });
+}
+
 // 监听来自background的消息
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'execute_crawl_script') {
@@ -12,17 +65,47 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // 处理域名匹配到脚本的情况
     handleDomainScriptMatch(message.matchedScripts, message.domain);
     sendResponse({ success: true });
+  } else if (message.type === 'set_idle_threshold') {
+    // 设置空闲阈值
+    idleThreshold = message.threshold || 300000; // 默认5分钟
+    console.log(`空闲阈值已设置为 ${idleThreshold} 毫秒`);
+    sendResponse({ success: true });
+  } else if (message.type === 'check_idle_status') {
+    // 检查空闲状态
+    sendResponse({ 
+      isIdle: isIdle, 
+      idleDuration: isIdle ? (Date.now() - lastActivityTime) : 0,
+      lastActivityTime: lastActivityTime
+    });
+    return true;
   }
   
   return false;
 });
+
+// 监听用户的活动事件
+function attachActivityListeners() {
+  const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click', 'wheel'];
+  
+  events.forEach(event => {
+    document.addEventListener(event, resetIdleTimer, true);
+  });
+  
+  // 初始化空闲计时器
+  resetIdleTimer();
+}
 
 // 执行爬取脚本的函数
 function executeCrawlScript(scriptContent, taskId) {
   try {
     // 创建一个函数来执行脚本内容
     // 注意：这里使用new Function是为了避免eval的安全风险
-    const scriptFunction = new Function(scriptContent + '; return crawlProduct ? crawlProduct() : crawlArticle ? crawlArticle() : null;');
+    const scriptFunction = new Function(`
+      ${scriptContent};
+      return typeof crawlProduct !== 'undefined' ? crawlProduct() : 
+             typeof crawlArticle !== 'undefined' ? crawlArticle() : 
+             typeof crawlData !== 'undefined' ? crawlData() : null;
+    `);
     const result = scriptFunction();
     
     // 将结果发送回background脚本
@@ -122,6 +205,9 @@ window.addEventListener('message', function(event) {
     });
   }
 });
+
+// 初始化空闲监控
+attachActivityListeners();
 
 // 当收到后台脚本的爬取结果消息时，转发给页面
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {

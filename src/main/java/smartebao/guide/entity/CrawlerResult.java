@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
+import java.time.LocalDateTime;
 import java.util.Date;
 
 @Data
@@ -13,21 +14,21 @@ public class CrawlerResult {
     @TableId(type = IdType.AUTO)
     private Long id;
     
-    private String resultId;
+    private String resultId; // 结果唯一标识
     
-    private String taskId;
+    private String taskId; // 关联任务ID
     
-    private String clientId;
+    private String clientId; // 关联客户端ID
     
     private String crawlData; // 爬取数据（JSON格式）
     
-    private String crawlStatus; // success/fail
+    private String crawlStatus; // 爬取状态：success, fail
     
-    private Date crawlTime;
+    private Date crawlTime; // 爬取时间
     
-    private Date storageTime;
-
-    // 自动生成的Getter和Setter方法
+    private Date storageTime; // 存储时间
+    
+    // 手动添加所有getter和setter方法
     public Long getId() {
         return id;
     }

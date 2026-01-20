@@ -19,6 +19,7 @@ CREATE TABLE `crawler_client` (
   `browser` varchar(20) DEFAULT 'Chrome' COMMENT '浏览器类型',
   `connect_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '连接时间',
   `status` varchar(20) DEFAULT 'online' COMMENT '状态（online/offline）',
+  `idle_status` tinyint(1) DEFAULT 0 COMMENT '空闲状态（0=忙碌，1=空闲）',
   `last_update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_client_id` (`client_id`)
@@ -48,6 +49,7 @@ CREATE TABLE `crawler_task` (
   `script_id` varchar(100) NOT NULL COMMENT '关联脚本ID',
   `timeout` int(11) DEFAULT 30000 COMMENT '任务超时时间（毫秒）',
   `params` varchar(500) DEFAULT '' COMMENT '任务额外参数（JSON格式）',
+  `execute_on_idle` tinyint(1) DEFAULT 0 COMMENT '是否仅在空闲时执行（0=否，1=是）',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `status` varchar(20) DEFAULT 'pending' COMMENT '任务状态（pending/processing/success/fail）',
   PRIMARY KEY (`id`),
@@ -95,6 +97,7 @@ CREATE TABLE `crawler_scheduled_task` (
   `domain` varchar(200) NOT NULL COMMENT '目标域名正则',
   `interval` bigint(20) NOT NULL COMMENT '执行间隔（毫秒）',
   `enabled` tinyint(1) DEFAULT 1 COMMENT '是否启用（1=启用，0=禁用）',
+  `execute_on_idle` tinyint(1) DEFAULT 0 COMMENT '是否仅在空闲时执行（0=否，1=是）',
   `task_name` varchar(100) DEFAULT '' COMMENT '任务名称',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
@@ -110,5 +113,5 @@ INSERT INTO `crawler_script` (`script_id`, `task_type`, `script_content`, `descr
 ('script_1', 'product_crawl', 'function crawlProduct() { return {name: document.querySelector(".product-name")?.innerText || "", price: document.querySelector(".product-price")?.innerText || ""}; } crawlProduct();', '电商商品基础信息爬取', 'taobao\\.com|tmall\\.com'),
 ('script_2', 'article_crawl', 'function crawlArticle() { return {title: document.querySelector("h1")?.innerText || "", author: document.querySelector(".article-author")?.innerText || ""}; } crawlArticle();', '资讯文章基础信息爬取', 'sohu\\.com|sina\\.com\\.cn');
 -- 初始化测试定时任务
-INSERT INTO `crawler_scheduled_task` (`task_key`, `client_id`, `username`, `script_id`, `domain`, `interval`, `enabled`, `task_name`) 
-VALUES ('taobao_product_01', 'client_test_001', 'admin', 'script_1', 'taobao\\.com', 300000, 1, '淘宝商品5分钟定时爬取');
+INSERT INTO `crawler_scheduled_task` (`task_key`, `client_id`, `username`, `script_id`, `domain`, `interval`, `enabled`, `execute_on_idle`, `task_name`) 
+VALUES ('taobao_product_01', 'client_test_001', 'admin', 'script_1', 'taobao\\.com', 300000, 1, 0, '淘宝商品5分钟定时爬取');

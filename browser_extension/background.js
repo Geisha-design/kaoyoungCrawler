@@ -7,6 +7,9 @@ let username = null;
 let cachedScripts = {}; // 存储缓存的脚本
 let domainScriptMap = {}; // 域名-脚本映射表
 let activeTabUrl = null;
+let clientIdleStatus = false; // 客户端空闲状态
+let idleSince = null; // 开始空闲的时间
+let heartbeatInterval = null; // 心跳定时器
 
 // 页面脚本缓存
 const pageScriptCache = new Map();
@@ -33,13 +36,52 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       clientId, 
       activeTabUrl,
       cachedScripts: Object.keys(cachedScripts),
-      online: isConnected 
+      online: isConnected,
+      idleStatus: clientIdleStatus,
+      idleSince: idleSince
     });
   } else if (message.type === 'get_scheduled_tasks') {
-    // 获取定时任务列表（暂时返回空，实际从后端获取）
-    // 这里可以维护一个定时任务列表
-    const scheduledTasks = []; // 实际应用中应从存储中获取
+    // 获取定时任务列表（现在由服务端管理，客户端不需要本地存储）
+    const scheduledTasks = []; // 客户端不再管理定时任务
     sendResponse({ tasks: scheduledTasks });
+  } else if (message.type === 'set_idle_threshold') {
+    // 设置空闲阈值并通知content script
+    chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+      if (tabs[0]) {
+        chrome.tabs.sendMessage(tabs[0].id, {
+          type: 'set_idle_threshold',
+          threshold: message.threshold
+        });
+      }
+    });
+    sendResponse({ success: true });
+  } else if (message.type === 'check_idle_status') {
+    // 检查空闲状态
+    chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+      if (tabs[0]) {
+        chrome.tabs.sendMessage(tabs[0].id, {
+          type: 'check_idle_status'
+        }, function(response) {
+          if (chrome.runtime.lastError) {
+            // 如果content script未加载，返回本地状态
+            sendResponse({ 
+              isIdle: clientIdleStatus, 
+              idleDuration: idleSince ? Date.now() - idleSince : 0,
+              lastActivityTime: idleSince
+            });
+          } else {
+            sendResponse(response);
+          }
+        });
+      } else {
+        sendResponse({ 
+          isIdle: clientIdleStatus, 
+          idleDuration: idleSince ? Date.now() - idleSince : 0,
+          lastActivityTime: idleSince
+        });
+      }
+    });
+    return true; // 异步响应
   }
   
   return true; // 保持消息通道开放
@@ -50,6 +92,29 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'crawl_result_from_content') {
     // 处理来自content script的爬取结果
     handleCrawlResult(message.taskId, message.result, message.status);
+    sendResponse({ success: true });
+  } else if (message.type === 'user_idle') {
+    // 用户进入空闲状态
+    clientIdleStatus = true;
+    idleSince = message.timestamp;
+    console.log('客户端进入空闲状态');
+    
+    // 通知后端客户端空闲状态
+    notifyIdleStatusToBackend(true);
+    
+    sendResponse({ success: true });
+  } else if (message.type === 'user_active') {
+    // 用户变为活跃状态
+    clientIdleStatus = false;
+    console.log('客户端变为活跃状态');
+    
+    // 通知后端客户端活跃状态
+    notifyIdleStatusToBackend(false);
+    
+    sendResponse({ success: true });
+  } else if (message.type === 'execute_idle_tasks') {
+    // 执行空闲任务
+    executeIdleTasks(message.idleSince, message.currentTime);
     sendResponse({ success: true });
   }
   
@@ -99,6 +164,9 @@ function connectWebSocket() {
       console.log('WebSocket连接已建立');
       isConnected = true;
       updateIcon('connected');
+      
+      // 连接成功后开始发送心跳
+      startHeartbeat();
     };
     
     ws.onmessage = function(event) {
@@ -114,6 +182,8 @@ function connectWebSocket() {
       console.log('WebSocket连接已关闭', event);
       isConnected = false;
       updateIcon('disconnected');
+      // 停止心跳
+      stopHeartbeat();
       // 尝试重连
       setTimeout(connectWebSocket, 5000);
     };
@@ -127,6 +197,51 @@ function connectWebSocket() {
     console.error('WebSocket连接错误:', error);
     isConnected = false;
     updateIcon('disconnected');
+  }
+}
+
+// 开始心跳
+function startHeartbeat() {
+  if (heartbeatInterval) {
+    clearInterval(heartbeatInterval);
+  }
+  
+  // 每30秒发送一次心跳
+  heartbeatInterval = setInterval(() => {
+    sendHeartbeat();
+  }, 30000);
+}
+
+// 停止心跳
+function stopHeartbeat() {
+  if (heartbeatInterval) {
+    clearInterval(heartbeatInterval);
+    heartbeatInterval = null;
+  }
+}
+
+// 发送心跳
+function sendHeartbeat() {
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    console.error('WebSocket未连接，无法发送心跳');
+    stopHeartbeat();
+    return;
+  }
+  
+  const heartbeatMessage = {
+    type: 'heartbeat',
+    payload: {
+      timestamp: Date.now()
+    },
+    clientId: clientId,
+    timestamp: Date.now()
+  };
+  
+  try {
+    ws.send(JSON.stringify(heartbeatMessage));
+    console.log('发送心跳:', heartbeatMessage);
+  } catch (error) {
+    console.error('发送心跳失败:', error);
   }
 }
 
@@ -155,12 +270,77 @@ function handleMessage(message) {
       break;
       
     case 'scheduled_task_config':
-      // 处理定时任务配置
-      handleScheduledTaskConfig(message.payload.tasks);
+      // 服务端不再推送定时任务配置，因为定时任务完全在服务端管理
+      console.log('客户端不再处理定时任务配置，所有定时任务在服务端管理');
+      break;
+      
+    case 'idle_control_command':
+      // 处理空闲控制命令（例如：设置空闲阈值、强制执行空闲任务等）
+      handleIdleControlCommand(message.payload);
+      break;
+      
+    case 'ping': // 服务端ping消息，需要回应pong
+      // 发送pong回应
+      sendPong(message.payload.requestId);
       break;
       
     default:
       console.log('未知消息类型:', message.type);
+      break;
+  }
+}
+
+// 发送Pong回应
+function sendPong(requestId) {
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    console.error('WebSocket未连接，无法发送Pong回应');
+    return;
+  }
+  
+  const pongMessage = {
+    type: 'pong',
+    payload: {
+      requestId: requestId,
+      timestamp: Date.now()
+    },
+    clientId: clientId,
+    timestamp: Date.now()
+  };
+  
+  try {
+    ws.send(JSON.stringify(pongMessage));
+  } catch (error) {
+    console.error('发送Pong回应失败:', error);
+  }
+}
+
+// 处理空闲控制命令
+function handleIdleControlCommand(payload) {
+  console.log('收到空闲控制命令:', payload);
+  
+  switch (payload.command) {
+    case 'set_idle_threshold':
+      // 设置空闲阈值
+      chrome.runtime.sendMessage({
+        type: 'set_idle_threshold',
+        threshold: payload.threshold || 300000 // 默认5分钟
+      });
+      break;
+      
+    case 'check_idle_status':
+      // 检查空闲状态
+      chrome.runtime.sendMessage({
+        type: 'check_idle_status'
+      });
+      break;
+      
+    case 'force_idle_execution':
+      // 强制执行空闲任务
+      executeIdleTasks(Date.now() - (payload.duration || 300000), Date.now());
+      break;
+      
+    default:
+      console.log('未知空闲控制命令:', payload.command);
       break;
   }
 }
@@ -182,7 +362,8 @@ function sendRegisterMessage() {
       payload: {
         username: username,
         currentUrl: currentUrl,
-        supportTaskTypes: 'product_crawl,article_crawl' // 示例支持的任务类型
+        supportTaskTypes: 'product_crawl,article_crawl,idle_task', // 添加空闲任务类型
+        idleStatus: clientIdleStatus // 发送当前空闲状态
       },
       clientId: clientId,
       timestamp: Date.now()
@@ -205,13 +386,15 @@ function handleScriptPush(scripts) {
     cachedScripts[script.scriptId] = script;
     
     // 构建域名-脚本映射表
-    const domains = script.domainPattern.split('|'); // 支持多个域名
-    domains.forEach(domain => {
-      if (!domainScriptMap[domain]) {
-        domainScriptMap[domain] = [];
-      }
-      domainScriptMap[domain].push(script);
-    });
+    if (script.domainPattern) {
+      const domains = script.domainPattern.split('|'); // 支持多个域名
+      domains.forEach(domain => {
+        if (!domainScriptMap[domain]) {
+          domainScriptMap[domain] = [];
+        }
+        domainScriptMap[domain].push(script);
+      });
+    }
   });
   
   console.log('脚本缓存已更新，当前缓存脚本数:', Object.keys(cachedScripts).length);
@@ -219,8 +402,14 @@ function handleScriptPush(scripts) {
 
 // 处理任务命令
 async function handleTaskCommand(payload) {
-  const { taskId, scriptId } = payload;
-  console.log(`收到任务命令，任务ID: ${taskId}, 脚本ID: ${scriptId}`);
+  const { taskId, scriptId, executeOnIdle } = payload;
+  console.log(`收到任务命令，任务ID: ${taskId}, 脚本ID: ${scriptId}, 空闲执行: ${executeOnIdle}`);
+  
+  // 如果任务配置为仅在空闲时执行，而当前不是空闲状态，则可能需要等待
+  if (executeOnIdle && !clientIdleStatus) {
+    console.log('任务配置为仅在空闲时执行，当前非空闲状态，可能需要等待...');
+    // 注意：现在定时任务完全由服务端管理，客户端只需执行服务端发送的任务
+  }
   
   const script = cachedScripts[scriptId];
   if (!script) {
@@ -342,87 +531,6 @@ function checkDomainScriptMatch(url) {
   }
 }
 
-// 处理定时任务配置
-function handleScheduledTaskConfig(tasks) {
-  console.log('收到定时任务配置:', tasks);
-  
-  // 清除所有现有的定时任务
-  chrome.alarms.clearAll();
-  
-  // 为每个启用的定时任务创建alarm
-  tasks.forEach(task => {
-    if (task.enabled) {
-      // 确保间隔至少为1分钟（Chrome Alarms API的限制）
-      const periodInMinutes = Math.max(1, Math.round(task.interval / 60000));
-      
-      const alarmInfo = {
-        periodInMinutes: periodInMinutes
-      };
-      
-      chrome.alarms.create(task.taskKey, alarmInfo);
-      
-      console.log(`创建定时任务: ${task.taskKey}, 间隔: ${periodInMinutes} 分钟`);
-    }
-  });
-  
-  // 监听alarm事件
-  chrome.alarms.onAlarm.addListener(alarm => {
-    handleAlarmTrigger(alarm.name);
-  });
-}
-
-// 处理定时任务触发
-async function handleAlarmTrigger(taskKey) {
-  console.log(`定时任务触发: ${taskKey}`);
-  
-  // 获取当前活动标签页
-  const tabs = await chrome.tabs.query({active: true, currentWindow: true});
-  
-  if (tabs.length > 0) {
-    const activeTab = tabs[0];
-    try {
-      const url = new URL(activeTab.url);
-      const hostname = url.hostname;
-      
-      // 获取定时任务配置
-      const response = await fetch(`http://localhost:8080/api/scheduled-task/list/${clientId}`, {
-        headers: {
-          'Authorization': `Bearer ${jwtToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const result = await response.json();
-        if (result.code === 200) {
-          const task = result.data.find(t => t.taskKey === taskKey);
-          
-          if (task && task.enabled) {
-            // 检查域名是否匹配
-            if (new RegExp(task.domain).test(hostname)) {
-              console.log(`域名匹配，执行定时任务 ${taskKey}`);
-              
-              // 执行任务
-              const script = cachedScripts[task.scriptId];
-              if (script) {
-                // 生成任务ID
-                const taskId = `scheduled_task_${taskKey}_${Date.now()}`;
-                
-                // 执行脚本
-                executeScriptOnActiveTab(task.scriptId, script.scriptContent, taskId);
-              }
-            } else {
-              console.log(`域名不匹配，跳过任务 ${taskKey}，当前域名: ${hostname}，任务域名: ${task.domain}`);
-            }
-          }
-        }
-      }
-    } catch (e) {
-      console.error('处理定时任务触发错误:', e);
-    }
-  }
-}
-
 // 更新插件图标
 function updateIcon(status) {
   const iconPath = status === 'connected' ? 
@@ -444,17 +552,43 @@ chrome.storage.local.get(['jwtToken', 'username', 'clientId'], function(result) 
   }
 });
 
-// 监听定时任务更新消息
+// 监听定时任务更新消息 (现在不需要了，因为定时任务在服务端管理)
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'scheduled_task_updated') {
-    // 广播给所有打开的定时任务管理页面
-    chrome.tabs.query({}, function(tabs) {
-      for (let tab of tabs) {
-        chrome.tabs.sendMessage(tab.id, message);
-      }
-    });
+    console.log('客户端不再处理定时任务更新消息，所有定时任务在服务端管理');
     sendResponse({ success: true });
   }
   
   return true;
 });
+
+// 移除之前与定时任务相关的存储监听
+// chrome.storage.onChanged.addListener(function(changes, namespace) {
+//   for (let [key, { oldValue, newValue }] of Object.entries(changes)) {
+//     if (key === 'idleTaskQueue' && clientIdleStatus && newValue && newValue.length > 0) {
+//       // 当队列有变化且客户端处于空闲状态时，执行队列中的任务
+//       executeQueuedIdleTasks();
+//     }
+//   }
+// });
+
+// 从这里开始移除与客户端定时任务相关的函数
+function executeIdleTasks(idleSince, currentTime) {
+  console.log(`执行空闲任务，自 ${new Date(idleSince)} 开始空闲`);
+  
+  // 检查是否有适合空闲时执行的任务
+  for (const scriptId in cachedScripts) {
+    const script = cachedScripts[scriptId];
+    
+    // 检查脚本是否标记为可以在空闲时执行
+    if (script.description.includes('idle') || script.scriptContent.includes('BACKGROUND_TASK')) {
+      console.log(`发现空闲任务脚本: ${scriptId}`);
+      
+      // 生成任务ID
+      const taskId = `idle_task_${scriptId}_${Date.now()}`;
+      
+      // 执行空闲脚本
+      executeScriptOnActiveTab(scriptId, script.scriptContent, taskId);
+    }
+  }
+}
