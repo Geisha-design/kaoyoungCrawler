@@ -14,13 +14,8 @@ import javax.websocket.server.ServerEndpointConfig.Configurator;
 @Component
 public class WebSocketConfigurator extends Configurator {
 
-    private static JwtUtil jwtUtil;
-
     @Override
     public void modifyHandshake(ServerEndpointConfig sec, HandshakeRequest request, HandshakeResponse response) {
-        // 确保Spring Bean被注入
-        SpringBeanAutowiringSupport.processInjectionBasedOnCurrentContext(this);
-        
         // 从握手请求中获取参数
         if (request.getQueryString() != null) {
             String queryString = request.getQueryString();
@@ -28,22 +23,13 @@ public class WebSocketConfigurator extends Configurator {
             for (String param : params) {
                 String[] keyValue = param.split("=");
                 if (keyValue.length == 2 && "token".equals(keyValue[0])) {
-                    // 验证JWT令牌
+                    // 直接将token存储到配置中，不进行验证
+                    // 因为WebSocket配置器在Spring上下文初始化前就被创建了
                     String token = keyValue[1];
-                    if (jwtUtil != null && !jwtUtil.validateToken(token)) {
-                        throw new RuntimeException("Invalid token");
-                    }
-                    
-                    // 将token存储到配置中，以便在WebSocket处理器中使用
                     sec.getUserProperties().put("token", token);
                     break;
                 }
             }
         }
-    }
-
-    @Autowired
-    public void setJwtUtil(JwtUtil jwtUtil) {
-        WebSocketConfigurator.jwtUtil = jwtUtil;
     }
 }

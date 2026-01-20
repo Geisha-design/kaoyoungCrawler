@@ -49,14 +49,24 @@ public class CrawlerWebSocketHandler {
     @OnOpen
     public void onOpen(Session session) {
         // 从session中获取JWT token进行验证
-        String token = getSessionAttribute(session, "token");
-        if (token == null || !jwtUtil.validateToken(token)) {
+        try {
+            String token = getSessionAttribute(session, "token");
+            if (token == null || jwtUtil == null || !jwtUtil.validateToken(token)) {
+                try {
+                    session.close();
+                    return;
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
             try {
                 session.close();
-                return;
-            } catch (IOException e) {
-                e.printStackTrace();
+            } catch (IOException ioException) {
+                ioException.printStackTrace();
             }
+            return;
         }
         
         System.out.println("WebSocket连接建立成功");

@@ -38,7 +38,9 @@ public class LoginController {
             Map<String, Object> response = new HashMap<>();
             response.put("code", 200);
             response.put("message", "登录成功");
-            response.put("data", Map.of("token", token));
+            Map<String, String> tokenData = new HashMap<>();
+            tokenData.put("token", token);
+            response.put("data", tokenData);
 
             return ResponseEntity.ok(response);
         } else {
