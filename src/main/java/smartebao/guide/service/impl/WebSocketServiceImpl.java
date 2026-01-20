@@ -167,8 +167,8 @@ public class WebSocketServiceImpl implements WebSocketService {
     }
 
     @Override
-    public void sendTaskToSpecificClient(String clientId, String taskType, String taskParams) {
-        String taskMessage = String.format("{\"type\":\"task\", \"taskType\":\"%s\", \"taskParams\":\"%s\"}", taskType, taskParams);
+    public void sendTaskToSpecificClient(String clientId, String taskType, String taskParams, Boolean executeOnIdle) {
+        String taskMessage = String.format("{\"type\":\"task\", \"taskType\":\"%s\", \"taskParams\":\"%s\", \"executeOnIdle\":%s}", taskType, taskParams, executeOnIdle);
         sendMessageToClient(clientId, taskMessage);
     }
 
@@ -176,7 +176,7 @@ public class WebSocketServiceImpl implements WebSocketService {
     public void sendTaskToAllIdleClients(String taskType, String taskParams) {
         List<String> idleClients = getIdleClients();
         for (String clientId : idleClients) {
-            sendTaskToSpecificClient(clientId, taskType, taskParams);
+            sendTaskToSpecificClient(clientId, taskType, taskParams, true);
         }
     }
 
@@ -214,7 +214,7 @@ public class WebSocketServiceImpl implements WebSocketService {
         if (!idleClients.isEmpty()) {
             // 发送到第一个空闲客户端
             String clientId = idleClients.get(0);
-            sendTaskToSpecificClient(clientId, taskType, taskParams);
+            sendTaskToSpecificClient(clientId, taskType, taskParams, true);
             return true;
         }
         return false; // 没有空闲客户端

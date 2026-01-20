@@ -452,17 +452,10 @@ public class CrawlerWebSocketHandler {
     }
 
     /**
-     * 检查客户端是否健康（有心跳）
+     * 获取会话映射
      */
-    public static boolean isClientHealthy(String clientId) {
-        // 静态方法中无法直接访问实例变量webSocketService，需要通过其他方式访问
-        // 这里提供一个替代方案，或者可以重构为非静态方法
-        // 由于无法直接访问webSocketService，我们可以直接调用ClientCacheService
-        // 但需要将clientCacheService设为静态访问或提供其他访问方式
-        
-        // 这是一个临时解决方案，实际实现可能需要重构
-        // 我们将返回true，因为无法访问实例变量
-        return true; // 临时返回值
+    public static Map<String, Session> getSessionMap() {
+        return sessionMap;
     }
 
     // 内部消息类定义

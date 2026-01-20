@@ -1,5 +1,8 @@
 package smartebao.guide.controller;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import smartebao.guide.entity.CrawlerTask;
@@ -15,6 +18,7 @@ import java.util.Map;
 /**
  * 外部系统任务控制器 - 供货代系统等外部系统调用
  */
+@Tag(name = "外部任务接口", description = "供外部系统调用的任务接口")
 @RestController
 @RequestMapping("/api/external")
 public class ExternalTaskController {
@@ -33,13 +37,14 @@ public class ExternalTaskController {
      * @param params 包含任务类型、参数等信息
      * @return 任务执行结果
      */
+    @Operation(summary = "外部系统发起任务请求", description = "外部系统发起爬虫任务请求")
     @PostMapping("/task")
     public ResponseData executeTask(@RequestBody Map<String, Object> params) {
         try {
             // 创建任务
             CrawlerTask task = new CrawlerTask();
             task.setTaskType((String) params.get("taskType")); // 如 "booking_status_check"
-            task.setTaskParams(params.get("taskParams").toString()); // 任务参数
+            task.setTaskParams((String) params.get("taskParams")); // 任务参数
             task.setTargetClients((String) params.get("targetClients")); // 目标客户端（可选）
             task.setPriority(1); // 默认优先级
             
@@ -70,6 +75,7 @@ public class ExternalTaskController {
                 Map<String, Object> result = new java.util.HashMap<>();
                 result.put("taskId", task.getId());
                 result.put("clientId", clientId);
+                result.put("suitableClientsCount", suitableClients.size());
                 return ResponseData.success("任务已发送至客户端执行", result);
             } else {
                 return ResponseData.error("当前没有符合条件的可用客户端执行任务");
@@ -84,8 +90,9 @@ public class ExternalTaskController {
      * @param taskId 任务ID
      * @return 任务结果
      */
+    @Operation(summary = "查询任务执行结果", description = "根据任务ID查询任务执行结果")
     @GetMapping("/task/result/{taskId}")
-    public ResponseData getTaskResult(@PathVariable String taskId) {
+    public ResponseData getTaskResult(@Parameter(description = "任务ID") @PathVariable String taskId) {
         try {
             // 这里可以实现具体的任务结果查询逻辑
             // 暂时返回模拟结果
@@ -99,6 +106,7 @@ public class ExternalTaskController {
      * 获取客户端状态
      * @return 客户端列表及其状态
      */
+    @Operation(summary = "获取客户端状态", description = "获取所有客户端的状态信息")
     @GetMapping("/clients/status")
     public ResponseData getClientStatus() {
         try {
@@ -115,8 +123,9 @@ public class ExternalTaskController {
      * @param params 任务参数
      * @return 执行结果
      */
+    @Operation(summary = "指定特定客户端执行任务", description = "指定特定客户端执行爬虫任务")
     @PostMapping("/task/client/{clientId}")
-    public ResponseData executeTaskOnSpecificClient(@PathVariable String clientId, @RequestBody Map<String, Object> params) {
+    public ResponseData executeTaskOnSpecificClient(@Parameter(description = "客户端ID") @PathVariable String clientId, @RequestBody Map<String, Object> params) {
         try {
             // 创建任务
             CrawlerTask task = new CrawlerTask();

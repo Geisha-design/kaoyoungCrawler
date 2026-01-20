@@ -1,6 +1,9 @@
 package smartebao.guide.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,6 +18,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/idle")
+@Tag(name = "客户端空闲状态管理", description = "用于管理客户端空闲状态的API")
 public class IdleController {
 
     @Autowired
@@ -27,6 +31,7 @@ public class IdleController {
      * 获取所有客户端的空闲状态
      */
     @GetMapping("/status")
+    @Operation(summary = "获取所有客户端空闲状态", description = "查询所有客户端的空闲状态信息")
     public ResponseEntity<Map<String, Object>> getAllIdleStatus() {
         try {
             QueryWrapper<CrawlerClient> wrapper = new QueryWrapper<>();
@@ -51,7 +56,8 @@ public class IdleController {
      * 获取指定客户端的空闲状态
      */
     @GetMapping("/status/{clientId}")
-    public ResponseEntity<Map<String, Object>> getClientIdleStatus(@PathVariable String clientId) {
+    @Operation(summary = "获取指定客户端空闲状态", description = "根据客户端ID查询特定客户端的空闲状态")
+    public ResponseEntity<Map<String, Object>> getClientIdleStatus(@Parameter(description = "客户端ID", required = true) @PathVariable String clientId) {
         try {
             QueryWrapper<CrawlerClient> wrapper = new QueryWrapper<>();
             wrapper.eq("client_id", clientId);
@@ -84,7 +90,8 @@ public class IdleController {
      * 设置客户端空闲阈值（通过WebSocket发送给客户端）
      */
     @PostMapping("/threshold/{clientId}")
-    public ResponseEntity<Map<String, Object>> setClientIdleThreshold(@PathVariable String clientId, @RequestBody Map<String, Object> request) {
+    @Operation(summary = "设置客户端空闲阈值", description = "向指定客户端发送空闲阈值设置命令")
+    public ResponseEntity<Map<String, Object>> setClientIdleThreshold(@Parameter(description = "客户端ID", required = true) @PathVariable String clientId, @RequestBody Map<String, Object> request) {
         try {
             Integer threshold = (Integer) request.get("threshold"); // 毫秒
 
@@ -124,7 +131,8 @@ public class IdleController {
      * 检查客户端空闲状态
      */
     @PostMapping("/check/{clientId}")
-    public ResponseEntity<Map<String, Object>> checkClientIdleStatus(@PathVariable String clientId) {
+    @Operation(summary = "检查客户端空闲状态", description = "向指定客户端发送空闲状态检查命令")
+    public ResponseEntity<Map<String, Object>> checkClientIdleStatus(@Parameter(description = "客户端ID", required = true) @PathVariable String clientId) {
         try {
             // 检查客户端是否在线
             if (!CrawlerWebSocketHandler.isClientOnline(clientId)) {

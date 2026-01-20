@@ -36,7 +36,7 @@ public interface WebSocketService {
 
     boolean isClientIdle(String clientId);
 
-    void sendTaskToSpecificClient(String clientId, String taskType, String taskParams);
+    void sendTaskToSpecificClient(String clientId, String taskType, String taskParams, Boolean executeOnIdle);
 
     void sendTaskToAllIdleClients(String taskType, String taskParams);
 

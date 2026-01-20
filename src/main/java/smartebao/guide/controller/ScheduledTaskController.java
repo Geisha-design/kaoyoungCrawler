@@ -1,6 +1,9 @@
 package smartebao.guide.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -11,13 +14,15 @@ import java.util.*;
 
 @RestController
 @RequestMapping("/api/scheduled-task")
+@Tag(name = "定时任务管理", description = "用于管理爬虫客户端定时任务的API")
 public class ScheduledTaskController {
 
     @Autowired
     private CrawlerScheduledTaskMapper scheduledTaskMapper;
 
     @GetMapping("/list/{clientId}")
-    public ResponseEntity<Map<String, Object>> getScheduledTasks(@PathVariable String clientId) {
+    @Operation(summary = "获取客户端定时任务列表", description = "根据客户端ID查询该客户端的所有定时任务")
+    public ResponseEntity<Map<String, Object>> getScheduledTasks(@Parameter(description = "客户端ID", required = true) @PathVariable String clientId) {
         try {
             // 查询指定客户端的定时任务
             QueryWrapper<CrawlerScheduledTask> wrapper = new QueryWrapper<>();
@@ -40,6 +45,7 @@ public class ScheduledTaskController {
     }
 
     @PostMapping("/sync")
+    @Operation(summary = "同步客户端定时任务", description = "将客户端的定时任务同步到服务器")
     public ResponseEntity<Map<String, Object>> syncScheduledTasks(@RequestBody Map<String, Object> request) {
         String clientId = (String) request.get("clientId");
         List<Map<String, Object>> tasks = (List<Map<String, Object>>) request.get("tasks");

@@ -1,96 +1,121 @@
 package smartebao.guide.controller;
 
-import com.alibaba.fastjson.JSON;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import smartebao.guide.entity.CrawlerClient;
-import smartebao.guide.entity.CrawlerScriptPushLog;
-import smartebao.guide.mapper.CrawlerClientMapper;
-import smartebao.guide.mapper.CrawlerScriptPushLogMapper;
+import smartebao.guide.entity.CrawlerScript;
+import smartebao.guide.service.CrawlerScriptService;
+import smartebao.guide.utils.ResponseData;
 import smartebao.guide.websocket.CrawlerWebSocketHandler;
 
-import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 
+@Tag(name = "爬虫脚本管理", description = "爬虫脚本增删改查及下发相关的API")
 @RestController
-@RequestMapping("/api/script")
+@RequestMapping("/api/scripts")
 public class ScriptController {
 
     @Autowired
-    private CrawlerClientMapper clientMapper;
+    private CrawlerScriptService scriptService;
 
     @Autowired
-    private CrawlerScriptPushLogMapper pushLogMapper;
+    private CrawlerWebSocketHandler webSocketHandler;
 
-    @PostMapping("/designated/push")
-    public ResponseEntity<Map<String, Object>> designatedPush(@RequestBody Map<String, Object> request) {
-        String clientId = (String) request.get("clientId");
-        List<String> scriptIds = (List<String>) request.get("scriptIds");
-
-        // 验证客户端是否存在
-        QueryWrapper<CrawlerClient> clientWrapper = new QueryWrapper<>();
-        clientWrapper.eq("client_id", clientId);
-        CrawlerClient client = clientMapper.selectOne(clientWrapper);
-        if (client == null) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("code", 400);
-            response.put("message", "客户端不存在");
-
-            return ResponseEntity.badRequest().body(response);
-        }
-
-        // 检查客户端是否在线
-        if (!CrawlerWebSocketHandler.isClientOnline(clientId)) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("code", 400);
-            response.put("message", "客户端不在线");
-
-            return ResponseEntity.badRequest().body(response);
-        }
-
+    @Operation(summary = "获取所有脚本", description = "获取系统中所有爬虫脚本的列表")
+    @GetMapping
+    public ResponseData getAllScripts() {
         try {
-            // 调用WebSocket处理器定向下发脚本
-            CrawlerWebSocketHandler handler = new CrawlerWebSocketHandler();
-            handler.sendDesignatedScriptsToClient(clientId, scriptIds);
-
-            // 记录下发日志
-            CrawlerScriptPushLog log = new CrawlerScriptPushLog();
-            log.setPushId("push_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().substring(0, 8));
-            log.setClientId(clientId);
-            log.setScriptIds(String.join(",", scriptIds));
-            log.setPushType("designated");
-            log.setPushStatus("success");
-            log.setPushTime(new Date());
-            log.setRemark("定向下发脚本");
-            pushLogMapper.insert(log);
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("code", 200);
-            response.put("message", "定向下发脚本请求已受理");
-
-            return ResponseEntity.ok(response);
+            List<CrawlerScript> scripts = scriptService.list();
+            return ResponseData.success("获取脚本列表成功", scripts);
         } catch (Exception e) {
-            // 记录失败日志
-            CrawlerScriptPushLog log = new CrawlerScriptPushLog();
-            log.setPushId("push_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().substring(0, 8));
-            log.setClientId(clientId);
-            log.setScriptIds(String.join(",", scriptIds));
-            log.setPushType("designated");
-            log.setPushStatus("fail");
-            log.setPushTime(new Date());
-            log.setRemark("定向下发脚本失败: " + e.getMessage());
-            pushLogMapper.insert(log);
+            return ResponseData.error("获取脚本列表失败: " + e.getMessage());
+        }
+    }
 
-            Map<String, Object> response = new HashMap<>();
-            response.put("code", 500);
-            response.put("message", "下发脚本失败: " + e.getMessage());
+    @Operation(summary = "根据ID获取脚本", description = "根据脚本ID获取特定的爬虫脚本信息")
+    @GetMapping("/{scriptId}")
+    public ResponseData getScriptById(@Parameter(description = "脚本ID") @PathVariable String scriptId) {
+        try {
+            CrawlerScript script = scriptService.getById(scriptId);
+            if (script != null) {
+                return ResponseData.success("获取脚本成功", script);
+            } else {
+                return ResponseData.error("脚本不存在");
+            }
+        } catch (Exception e) {
+            return ResponseData.error("获取脚本失败: " + e.getMessage());
+        }
+    }
 
-            return ResponseEntity.status(500).body(response);
+    @Operation(summary = "创建脚本", description = "创建一个新的爬虫脚本")
+    @PostMapping
+    public ResponseData createScript(@RequestBody CrawlerScript script) {
+        try {
+            // 生成唯一的scriptId
+            script.setScriptId("script_" + System.currentTimeMillis());
+            scriptService.save(script);
+            return ResponseData.success("脚本创建成功", script);
+        } catch (Exception e) {
+            return ResponseData.error("脚本创建失败: " + e.getMessage());
+        }
+    }
+
+    @Operation(summary = "更新脚本", description = "根据脚本ID更新爬虫脚本信息")
+    @PutMapping("/{scriptId}")
+    public ResponseData updateScript(@Parameter(description = "脚本ID") @PathVariable String scriptId, 
+                                   @RequestBody CrawlerScript script) {
+        try {
+            script.setScriptId(scriptId);
+            scriptService.updateById(script);
+            return ResponseData.success("脚本更新成功", script);
+        } catch (Exception e) {
+            return ResponseData.error("脚本更新失败: " + e.getMessage());
+        }
+    }
+
+    @Operation(summary = "删除脚本", description = "根据脚本ID删除爬虫脚本")
+    @DeleteMapping("/{scriptId}")
+    public ResponseData deleteScript(@Parameter(description = "脚本ID") @PathVariable String scriptId) {
+        try {
+            scriptService.removeById(scriptId);
+            return ResponseData.success("脚本删除成功", null);
+        } catch (Exception e) {
+            return ResponseData.error("脚本删除失败: " + e.getMessage());
+        }
+    }
+
+    @Operation(summary = "批量下发脚本到所有客户端", description = "将所有脚本批量下发到当前在线的所有客户端")
+    @PostMapping("/push/batch")
+    public ResponseData pushScriptsToAllClients() {
+        try {
+            // 获取所有脚本
+            List<CrawlerScript> scripts = scriptService.list();
+            if (scripts.isEmpty()) {
+                return ResponseData.error("没有可用的脚本");
+            }
+
+            // 获取所有在线客户端并下发脚本
+            List<String> onlineClients = CrawlerWebSocketHandler.getOnlineCount() > 0 ? 
+                CrawlerWebSocketHandler.getSessionMap().keySet().stream().collect(java.util.stream.Collectors.toList()) : 
+                java.util.Collections.emptyList();
+
+            if (onlineClients.isEmpty()) {
+                return ResponseData.error("当前没有在线客户端");
+            }
+
+            // 向每个在线客户端下发脚本
+            for (String clientId : onlineClients) {
+                webSocketHandler.sendScriptsToClient(clientId, "batch");
+            }
+
+            java.util.Map<String, Object> result = new java.util.HashMap<>();
+            result.put("scriptCount", scripts.size());
+            result.put("clientCount", onlineClients.size());
+            return ResponseData.success("脚本批量下发成功", result);
+        } catch (Exception e) {
+            return ResponseData.error("脚本批量下发失败: " + e.getMessage());
         }
     }
 }

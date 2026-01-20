@@ -81,6 +81,12 @@
             <artifactId>druid-spring-boot-starter</artifactId>
             <version>1.2.16</version>
         </dependency>
+        <!-- SpringDoc OpenAPI (替代Springfox) -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-ui</artifactId>
+            <version>1.7.0</version>
+        </dependency>
         <!-- Spring Boot Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

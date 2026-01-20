@@ -8,7 +8,6 @@ import smartebao.guide.entity.CrawlerClient;
 import smartebao.guide.entity.CrawlerScheduledTask;
 import smartebao.guide.mapper.CrawlerClientMapper;
 import smartebao.guide.mapper.CrawlerScheduledTaskMapper;
-import smartebao.guide.websocket.CrawlerWebSocketHandler;
 
 import java.util.List;
 
@@ -22,7 +21,7 @@ public class ScheduledTaskService {
     private CrawlerClientMapper clientMapper;
 
     @Autowired
-    private CrawlerWebSocketHandler webSocketHandler;
+    private WebSocketService webSocketService;
 
     /**
      * 每分钟检查一次定时任务
@@ -62,8 +61,8 @@ public class ScheduledTaskService {
     private void executeTask(CrawlerScheduledTask task) {
         try {
             // 检查目标客户端是否在线且健康
-            if (CrawlerWebSocketHandler.isClientOnline(task.getClientId()) &&
-                CrawlerWebSocketHandler.isClientHealthy(task.getClientId())) {
+            if (webSocketService.isClientConnected(task.getClientId()) &&
+                webSocketService.isClientHealthy(task.getClientId())) {
 
                 // 获取客户端信息，检查其空闲状态
                 QueryWrapper<CrawlerClient> clientQuery = new QueryWrapper<>();
@@ -81,7 +80,7 @@ public class ScheduledTaskService {
                 String taskId = "scheduled_task_" + task.getTaskKey() + "_" + System.currentTimeMillis();
 
                 // 发送任务指令到客户端
-                webSocketHandler.sendTaskCommand(task.getClientId(), taskId, task.getScriptId(), task.getExecuteOnIdle());
+                webSocketService.sendTaskToSpecificClient(task.getClientId(), taskId, task.getScriptId(), task.getExecuteOnIdle());
 
                 System.out.println("发送定时任务到客户端 " + task.getClientId() + ", 任务: " + task.getTaskKey());
             } else {
