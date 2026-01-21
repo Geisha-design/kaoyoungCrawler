@@ -6,6 +6,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import static org.springframework.security.web.util.matcher.AntPathRequestMatcher.antMatcher;
 
 @Configuration
 @EnableWebSecurity
@@ -16,14 +17,9 @@ public class SecurityConfig {
         http
                 .authorizeHttpRequests(authz -> authz
                         // 允许访问API文档相关路径
-                        .antMatchers("/doc.html").permitAll()
-                        .antMatchers("/webjars/**").permitAll()
-                        .antMatchers("/v3/api-docs/**").permitAll()
-                        .antMatchers("/swagger-ui/**").permitAll()
-                        .antMatchers("/swagger-ui.html").permitAll()
+                        .requestMatchers(antMatcher("/doc.html"), antMatcher("/webjars/**"), antMatcher("/v3/api-docs/**"), antMatcher("/swagger-ui/**"), antMatcher("/swagger-ui.html")).permitAll()
                         // 允许访问登录接口
-                        .antMatchers("/api/register").permitAll()
-                        .antMatchers("/api/login").permitAll()
+                        .requestMatchers(antMatcher("/api/register"), antMatcher("/api/login"), antMatcher("/api/health/**")).permitAll()
                         // 其他所有请求需要认证
                         .anyRequest().authenticated()
                 )

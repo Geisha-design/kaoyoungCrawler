@@ -331,7 +331,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
       }
       
-      const response = await fetch('http://localhost:8080/api/scheduled-task/sync', {
+      const response = await fetch('http://localhost:8080/smarteCrawler/api/scheduled-task/sync', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${storage.jwtToken}`,

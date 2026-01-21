@@ -157,7 +157,7 @@ function connectWebSocket() {
   }
   
   try {
-    const wsUrl = `ws://localhost:8080/ws?token=${jwtToken}`;
+    const wsUrl = `ws://localhost:8080/smarteCrawler/ws?token=${jwtToken}`;
     ws = new WebSocket(wsUrl);
     
     ws.onopen = function(event) {

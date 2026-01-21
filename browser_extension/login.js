@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     try {
       // 调用后端登录接口
-      const response = await fetch('http://localhost:8080/api/login', {
+      const response = await fetch('http://localhost:8080/smarteCrawler/api/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

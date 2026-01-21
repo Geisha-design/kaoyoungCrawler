@@ -68,7 +68,7 @@ browser_extension/
 ## 配置要求
 
 - Chrome浏览器版本 90+
-- 后端服务运行在 `http://localhost:8080`（可在代码中修改）
+- 后端服务运行在 `http://localhost:8080/smarteCrawler`（可在代码中修改）
 - MySQL数据库已正确配置
 
 ## 故障排除
