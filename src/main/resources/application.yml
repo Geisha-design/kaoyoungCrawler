@@ -1,6 +1,6 @@
 # 服务器配置
 server:
-  port: 9093
+  port: 8080
   servlet:
     context-path: /smarteCrawler
 
