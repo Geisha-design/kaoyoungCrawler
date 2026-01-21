@@ -16,15 +16,13 @@ public class SecurityConfig {
         http
                 .authorizeHttpRequests(authz -> authz
                         // 允许访问API文档相关路径
-                        .antMatchers("/doc.html").permitAll()
-                        .antMatchers("/webjars/**").permitAll()
-                        .antMatchers("/v3/api-docs/**").permitAll()
-                        .antMatchers("/swagger-ui/**").permitAll()
-                        .antMatchers("/swagger-ui.html").permitAll()
-                        // 允许访问登录接口
-                        .antMatchers("/api/register").permitAll()
-                        .antMatchers("/api/login").permitAll()
-                        .antMatchers("/api/health/**").permitAll()
+                        .antMatchers("/doc.html", "/webjars/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        // 允许访问带上下文路径的API文档路径
+                        .antMatchers("/**/doc.html", "/**/webjars/**", "/**/v3/api-docs/**", "/**/swagger-ui/**", "/**/swagger-ui.html").permitAll()
+                        // 允许访问登录注册接口
+                        .antMatchers("/**/api/register", "/**/api/login").permitAll()
+                        // 允许访问健康检查、空闲状态、管理员和脚本接口
+                        .antMatchers("/**/api/health/**", "/**/api/idle/**", "/**/api/admin/**", "/**/api/scripts/**").permitAll()
                         // 其他所有请求需要认证
                         .anyRequest().authenticated()
                 )

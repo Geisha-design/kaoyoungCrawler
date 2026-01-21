@@ -1,16 +1,19 @@
 package smartebao.guide.controller;
 
-import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import smartebao.guide.entity.CrawlerScript;
 import smartebao.guide.service.CrawlerScriptService;
-import smartebao.guide.utils.ResponseData;
 import smartebao.guide.websocket.CrawlerWebSocketHandler;
+import smartebao.guide.utils.ResponseData;
 
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Tag(name = "爬虫脚本管理", description = "爬虫脚本增删改查及下发相关的API")
 @RestController
@@ -24,7 +27,7 @@ public class ScriptController {
     private CrawlerWebSocketHandler webSocketHandler;
 
     @Operation(summary = "获取所有脚本", description = "获取系统中所有爬虫脚本的列表")
-    @GetMapping
+    @GetMapping(produces = "application/json")
     public ResponseData getAllScripts() {
         try {
             List<CrawlerScript> scripts = scriptService.list();
@@ -35,7 +38,7 @@ public class ScriptController {
     }
 
     @Operation(summary = "根据ID获取脚本", description = "根据脚本ID获取特定的爬虫脚本信息")
-    @GetMapping("/{scriptId}")
+    @GetMapping(value = "/{scriptId}", produces = "application/json")
     public ResponseData getScriptById(@Parameter(description = "脚本ID") @PathVariable String scriptId) {
         try {
             CrawlerScript script = scriptService.getById(scriptId);
@@ -50,7 +53,7 @@ public class ScriptController {
     }
 
     @Operation(summary = "创建脚本", description = "创建一个新的爬虫脚本")
-    @PostMapping
+    @PostMapping(consumes = "application/json", produces = "application/json")
     public ResponseData createScript(@RequestBody CrawlerScript script) {
         try {
             // 生成唯一的scriptId
@@ -63,7 +66,7 @@ public class ScriptController {
     }
 
     @Operation(summary = "更新脚本", description = "根据脚本ID更新爬虫脚本信息")
-    @PutMapping("/{scriptId}")
+    @PutMapping(value = "/{scriptId}", consumes = "application/json", produces = "application/json")
     public ResponseData updateScript(@Parameter(description = "脚本ID") @PathVariable String scriptId, 
                                    @RequestBody CrawlerScript script) {
         try {
@@ -76,7 +79,7 @@ public class ScriptController {
     }
 
     @Operation(summary = "删除脚本", description = "根据脚本ID删除爬虫脚本")
-    @DeleteMapping("/{scriptId}")
+    @DeleteMapping(value = "/{scriptId}", produces = "application/json")
     public ResponseData deleteScript(@Parameter(description = "脚本ID") @PathVariable String scriptId) {
         try {
             scriptService.removeById(scriptId);
@@ -87,7 +90,7 @@ public class ScriptController {
     }
 
     @Operation(summary = "批量下发脚本到所有客户端", description = "将所有脚本批量下发到当前在线的所有客户端")
-    @PostMapping("/push/batch")
+    @PostMapping(value = "/push/batch", produces = "application/json")
     public ResponseData pushScriptsToAllClients() {
         try {
             // 获取所有脚本
@@ -98,7 +101,7 @@ public class ScriptController {
 
             // 获取所有在线客户端并下发脚本
             List<String> onlineClients = CrawlerWebSocketHandler.getOnlineCount() > 0 ? 
-                CrawlerWebSocketHandler.getSessionMap().keySet().stream().collect(java.util.stream.Collectors.toList()) : 
+                CrawlerWebSocketHandler.getSessionMap().keySet().stream().collect(Collectors.toList()) : 
                 java.util.Collections.emptyList();
 
             if (onlineClients.isEmpty()) {
@@ -110,7 +113,7 @@ public class ScriptController {
                 webSocketHandler.sendScriptsToClient(clientId, "batch");
             }
 
-            java.util.Map<String, Object> result = new java.util.HashMap<>();
+            Map<String, Object> result = new HashMap<>();
             result.put("scriptCount", scripts.size());
             result.put("clientCount", onlineClients.size());
             return ResponseData.success("脚本批量下发成功", result);

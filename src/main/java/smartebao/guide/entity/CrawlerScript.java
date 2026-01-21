@@ -3,6 +3,7 @@ package smartebao.guide.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
 import java.util.Date;
@@ -23,6 +24,7 @@ public class CrawlerScript {
     
     private String domainPattern; // 匹配域名正则表达式
     
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
     private Date updateTime;
 
     // 自动生成的Getter和Setter方法

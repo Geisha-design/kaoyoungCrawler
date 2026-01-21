@@ -1,11 +1,19 @@
 package smartebao.guide.utils;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 @Data
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class ResponseData {
+    @JsonProperty("code")
     private int code;
+    
+    @JsonProperty("message")
     private String message;
+    
+    @JsonProperty("data")
     private Object data;
 
     public ResponseData(int code, String message, Object data) {
