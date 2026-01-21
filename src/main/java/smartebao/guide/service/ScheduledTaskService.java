@@ -30,10 +30,8 @@ public class ScheduledTaskService {
     public void checkScheduledTasks() {
         System.out.println("开始检查定时任务...");
 
-        // 查询所有启用的定时任务
-        QueryWrapper<CrawlerScheduledTask> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("`enabled`", true);
-        List<CrawlerScheduledTask> tasks = scheduledTaskMapper.selectList(queryWrapper);
+        // 查询所有启用的定时任务 - 使用自定义查询方法避免MySQL保留字问题
+        List<CrawlerScheduledTask> tasks = scheduledTaskMapper.selectAllEnabledTasks();
 
         for (CrawlerScheduledTask task : tasks) {
             // 检查是否到了执行时间

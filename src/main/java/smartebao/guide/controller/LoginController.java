@@ -8,6 +8,7 @@ import smartebao.guide.entity.CrawlerUser;
 import smartebao.guide.mapper.CrawlerUserMapper;
 import smartebao.guide.utils.JwtUtil;
 
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -50,5 +51,40 @@ public class LoginController {
 
             return ResponseEntity.status(401).body(response);
         }
+    }
+
+    @PostMapping("/register")
+    public ResponseEntity<Map<String, Object>> register(@RequestBody Map<String, String> userData) {
+        String username = userData.get("username");
+        String password = userData.get("password");
+
+        // 检查用户名是否已存在
+        QueryWrapper<CrawlerUser> wrapper = new QueryWrapper<>();
+        wrapper.eq("username", username);
+        CrawlerUser existingUser = userMapper.selectOne(wrapper);
+
+        if (existingUser != null) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("code", 409); // 冲突状态码
+            response.put("message", "用户名已存在");
+
+            return ResponseEntity.status(409).body(response);
+        }
+
+        // 创建新用户
+        CrawlerUser newUser = new CrawlerUser();
+        newUser.setUsername(username);
+        newUser.setPassword(password);
+        newUser.setCreateTime(new Date());
+        newUser.setUpdateTime(new Date());
+
+        // 保存用户到数据库
+        userMapper.insert(newUser);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("code", 200);
+        response.put("message", "注册成功");
+
+        return ResponseEntity.ok(response);
     }
 }

@@ -1,6 +1,5 @@
 package smartebao.guide.controller;
 
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -9,6 +8,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import smartebao.guide.entity.CrawlerScheduledTask;
 import smartebao.guide.mapper.CrawlerScheduledTaskMapper;
+import smartebao.guide.mapper.CrawlerClientMapper;
+import smartebao.guide.service.WebSocketService;
 
 import java.util.*;
 
@@ -20,14 +21,18 @@ public class ScheduledTaskController {
     @Autowired
     private CrawlerScheduledTaskMapper scheduledTaskMapper;
 
+    @Autowired
+    private CrawlerClientMapper crawlerClientMapper;
+
+    @Autowired
+    private WebSocketService webSocketService;
+
     @GetMapping("/list/{clientId}")
     @Operation(summary = "获取客户端定时任务列表", description = "根据客户端ID查询该客户端的所有定时任务")
     public ResponseEntity<Map<String, Object>> getScheduledTasks(@Parameter(description = "客户端ID", required = true) @PathVariable String clientId) {
         try {
-            // 查询指定客户端的定时任务
-            QueryWrapper<CrawlerScheduledTask> wrapper = new QueryWrapper<>();
-            wrapper.eq("client_id", clientId);
-            List<CrawlerScheduledTask> tasks = scheduledTaskMapper.selectList(wrapper);
+            // 查询指定客户端的定时任务 - 使用自定义查询方法避免MySQL保留字enabled的问题
+            List<CrawlerScheduledTask> tasks = scheduledTaskMapper.selectByClientId(clientId);
 
             Map<String, Object> response = new HashMap<>();
             response.put("code", 200);
@@ -51,10 +56,8 @@ public class ScheduledTaskController {
         List<Map<String, Object>> tasks = (List<Map<String, Object>>) request.get("tasks");
 
         try {
-            // 先删除该客户端的所有现有定时任务
-            QueryWrapper<CrawlerScheduledTask> deleteWrapper = new QueryWrapper<>();
-            deleteWrapper.eq("client_id", clientId);
-            scheduledTaskMapper.delete(deleteWrapper);
+            // 先删除该客户端的所有现有定时任务 - 使用自定义删除方法避免MySQL保留字enabled的问题
+            scheduledTaskMapper.deleteByClientId(clientId);
 
             // 插入新的定时任务
             for (Map<String, Object> task : tasks) {

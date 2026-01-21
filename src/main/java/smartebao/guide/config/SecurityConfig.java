@@ -22,6 +22,7 @@ public class SecurityConfig {
                         .antMatchers("/swagger-ui/**").permitAll()
                         .antMatchers("/swagger-ui.html").permitAll()
                         // 允许访问登录接口
+                        .antMatchers("/api/register").permitAll()
                         .antMatchers("/api/login").permitAll()
                         // 其他所有请求需要认证
                         .anyRequest().authenticated()

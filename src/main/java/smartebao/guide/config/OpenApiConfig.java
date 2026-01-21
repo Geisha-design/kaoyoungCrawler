@@ -13,11 +13,11 @@ public class OpenApiConfig {
     public OpenAPI customOpenAPI() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("爬虫助手系统API文档")
-                        .description("爬虫助手系统后端API接口文档 - 使用Knife4j增强版")
+                        .title("kaoyoung爬虫助手系统API文档")
+                        .description("kaoyoung爬虫助手系统后端API接口文档 - 使用Knife4j增强版")
                         .version("1.0.0")
                         .contact(new Contact()
                                 .name("SmartEbao Team")
-                                .email("smartebao@example.com")));
+                                .email("qiyz@smartebao.com")));
     }
 }

@@ -1,5 +1,9 @@
+# 服务器配置
 server:
-  port: 8089 # 服务端口
+  port: 8083
+  servlet:
+    context-path: /smarteCrawler
+
 
 spring:
   datasource:
@@ -33,6 +37,18 @@ mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    # 开启SQL关键字下划线转义
+    call-setters-on-nulls: true
+  global-config:
+    db-config:
+      # 字段策略，忽略判断
+      field-strategy: not_null
+      # 逻辑删除字段名
+      logic-delete-field: deleted
+      # 逻辑删除值
+      logic-delete-value: 1
+      # 逻辑未删除值
+      logic-not-delete-value: 0
 
 jwt:
   secret: your-secret-key-keep-it-safe-2026 # 生产环境用环境变量

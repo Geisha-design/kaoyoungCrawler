@@ -33,7 +33,7 @@ public class CrawlerScheduledTask {
     private Long interval; // 执行间隔（毫秒）
     
     @TableField(value = "`enabled`")
-    private Boolean enabled; // 是否启用（1=启用，0=禁用）
+    private Boolean enabled; // 是否启用（true=启用，false=禁用）
     
     @TableField("execute_on_idle")
     private Boolean executeOnIdle; // 是否仅在空闲时执行
