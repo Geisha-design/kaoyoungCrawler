@@ -81,11 +81,22 @@
             <artifactId>druid-spring-boot-starter</artifactId>
             <version>1.2.16</version>
         </dependency>
-        <!-- SpringDoc OpenAPI (替代Springfox) -->
+        <!-- SpringDoc OpenAPI (Modern alternative to Springfox) -->
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-ui</artifactId>
             <version>1.7.0</version>
+        </dependency>
+        <!-- Knife4j UI Enhancement for SpringDoc -->
+        <dependency>
+            <groupId>com.github.xiaoymin</groupId>
+            <artifactId>knife4j-openapi3-spring-boot-starter</artifactId>
+            <version>4.4.0</version>
+        </dependency>
+        <!-- Spring Security -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
         <!-- Spring Boot Test -->
         <dependency>

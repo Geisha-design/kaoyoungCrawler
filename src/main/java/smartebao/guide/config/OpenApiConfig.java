@@ -1,6 +1,7 @@
 package smartebao.guide.config;
 
 import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.info.Contact;
 import io.swagger.v3.oas.models.info.Info;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -13,7 +14,10 @@ public class OpenApiConfig {
         return new OpenAPI()
                 .info(new Info()
                         .title("爬虫助手系统API文档")
-                        .description("爬虫助手系统后端API接口文档")
-                        .version("1.0.0"));
+                        .description("爬虫助手系统后端API接口文档 - 使用Knife4j增强版")
+                        .version("1.0.0")
+                        .contact(new Contact()
+                                .name("SmartEbao Team")
+                                .email("smartebao@example.com")));
     }
 }

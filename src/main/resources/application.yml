@@ -1,5 +1,5 @@
 server:
-  port: 8080 # 服务端口
+  port: 8089 # 服务端口
 
 spring:
   datasource:
@@ -37,6 +37,32 @@ mybatis-plus:
 jwt:
   secret: your-secret-key-keep-it-safe-2026 # 生产环境用环境变量
   expire: 7200000 # JWT过期时间（2毫秒，毫秒）
+
+knife4j:
+  enable: true
+  production: false
+  basic:
+    enable: true
+    username: admin
+    password: admin
+  # 配置需要保护的路径
+  auth:
+    enable: false
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+  api-docs:
+    path: /v3/api-docs
+  group-configs:
+    - group: 'default'
+      paths-to-match: ['/api/**']
+      packages-to-scan: smartebao.guide.controller
+  # 不需要认证访问的路径
+  paths-to-match:
+    - /api/**
 
 logging:
   level:
