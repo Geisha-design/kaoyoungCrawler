@@ -66,7 +66,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
       }
       
-      const response = await fetch(`http://localhost:8080/api/scheduled-task/list/${storage.clientId}`, {
+      const response = await fetch(`http://localhost:8090/smarteCrawler/api/scheduled-task/list/${storage.clientId}`, {
         headers: {
           'Authorization': `Bearer ${storage.jwtToken}`,
           'Content-Type': 'application/json'
@@ -142,7 +142,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
       }
       
-      const response = await fetch(`http://localhost:8080/api/scheduled-task/list/${storage.clientId}`, {
+      const response = await fetch(`http://localhost:8090/smarteCrawler/api/scheduled-task/list/${storage.clientId}`, {
         headers: {
           'Authorization': `Bearer ${storage.jwtToken}`,
           'Content-Type': 'application/json'
@@ -186,7 +186,7 @@ document.addEventListener('DOMContentLoaded', function() {
       }
       
       // 构造要同步的数据（移除要删除的任务）
-      const response = await fetch(`http://localhost:8080/api/scheduled-task/list/${storage.clientId}`, {
+      const response = await fetch(`http://localhost:8090/smarteCrawler/api/scheduled-task/list/${storage.clientId}`, {
         headers: {
           'Authorization': `Bearer ${storage.jwtToken}`,
           'Content-Type': 'application/json'
@@ -216,7 +216,7 @@ document.addEventListener('DOMContentLoaded', function() {
       }
       
       // 获取当前所有任务
-      const response = await fetch(`http://localhost:8080/api/scheduled-task/list/${storage.clientId}`, {
+      const response = await fetch(`http://localhost:8090/smarteCrawler/api/scheduled-task/list/${storage.clientId}`, {
         headers: {
           'Authorization': `Bearer ${storage.jwtToken}`,
           'Content-Type': 'application/json'
@@ -266,7 +266,7 @@ document.addEventListener('DOMContentLoaded', function() {
       
       // 获取当前所有任务
       let tasks = [];
-      const response = await fetch(`http://localhost:8080/api/scheduled-task/list/${storage.clientId}`, {
+      const response = await fetch(`http://localhost:8090/smarteCrawler/api/scheduled-task/list/${storage.clientId}`, {
         headers: {
           'Authorization': `Bearer ${storage.jwtToken}`,
           'Content-Type': 'application/json'
@@ -331,7 +331,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
       }
       
-      const response = await fetch('http://localhost:8080/smarteCrawler/api/scheduled-task/sync', {
+      const response = await fetch('http://localhost:8090/smarteCrawler/api/scheduled-task/sync', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${storage.jwtToken}`,

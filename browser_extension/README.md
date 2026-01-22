@@ -16,8 +16,8 @@
 ### 开发者模式安装
 
 1. 打开Chrome浏览器，进入 `chrome://extensions/`
-2. 开启右上角的“开发者模式”
-3. 点击“加载已解压的扩展程序”
+2. 开启右上角的"开发者模式"
+3. 点击"加载已解压的扩展程序"
 4. 选择本目录（browser_extension）
 
 ### 所需权限说明
@@ -68,7 +68,7 @@ browser_extension/
 ## 配置要求
 
 - Chrome浏览器版本 90+
-- 后端服务运行在 `http://localhost:8080/smarteCrawler`（可在代码中修改）
+- 后端服务运行在 `http://localhost:8090/smarteCrawler`（可在代码中修改）
 - MySQL数据库已正确配置
 
 ## 故障排除

@@ -8,6 +8,16 @@
       padding: 10px;
       font-family: Arial, sans-serif;
     }
+    
+    .login-form {
+      display: block;
+    }
+    
+    .connected-page {
+      display: none;
+      text-align: center;
+    }
+    
     .form-group {
       margin-bottom: 10px;
     }
@@ -42,19 +52,166 @@
     .disconnected {
       color: red;
     }
+    
+    /* 动画小人样式 */
+    .loader {
+      width: 60px;
+      height: 60px;
+      position: relative;
+      margin: 20px auto;
+    }
+    
+    .person {
+      position: absolute;
+      width: 40px;
+      height: 60px;
+      top: 0;
+      left: 10px;
+    }
+    
+    .head {
+      width: 20px;
+      height: 20px;
+      background: #333;
+      border-radius: 50%;
+      position: absolute;
+      top: 0;
+      left: 10px;
+    }
+    
+    .body {
+      width: 4px;
+      height: 20px;
+      background: #333;
+      position: absolute;
+      top: 20px;
+      left: 19px;
+    }
+    
+    .arm.left {
+      width: 4px;
+      height: 15px;
+      background: #333;
+      position: absolute;
+      top: 22px;
+      left: 10px;
+      transform-origin: top center;
+      animation: swing-left 1s infinite alternate;
+    }
+    
+    .arm.right {
+      width: 4px;
+      height: 15px;
+      background: #333;
+      position: absolute;
+      top: 22px;
+      left: 24px;
+      transform-origin: top center;
+      animation: swing-right 1s infinite alternate;
+    }
+    
+    .leg.left {
+      width: 4px;
+      height: 15px;
+      background: #333;
+      position: absolute;
+      top: 40px;
+      left: 16px;
+      transform-origin: top center;
+      animation: step-left 1s infinite alternate;
+    }
+    
+    .leg.right {
+      width: 4px;
+      height: 15px;
+      background: #333;
+      position: absolute;
+      top: 40px;
+      left: 20px;
+      transform-origin: top center;
+      animation: step-right 1s infinite alternate;
+    }
+    
+    @keyframes swing-left {
+      0% { transform: rotate(-20deg); }
+      100% { transform: rotate(20deg); }
+    }
+    
+    @keyframes swing-right {
+      0% { transform: rotate(20deg); }
+      100% { transform: rotate(-20deg); }
+    }
+    
+    @keyframes step-left {
+      0% { transform: rotate(-10deg); }
+      100% { transform: rotate(10deg); }
+    }
+    
+    @keyframes step-right {
+      0% { transform: rotate(10deg); }
+      100% { transform: rotate(-10deg); }
+    }
+    
+    .connection-status {
+      font-size: 16px;
+      font-weight: bold;
+      margin-top: 10px;
+      color: #28a745;
+    }
+    
+    .client-info {
+      margin-top: 15px;
+      font-size: 12px;
+      color: #666;
+    }
+    
+    .back-btn {
+      background-color: #6c757d;
+      margin-top: 15px;
+    }
+    
+    .back-btn:hover {
+      background-color: #5a6268;
+    }
   </style>
 </head>
 <body>
-  <div class="form-group">
-    <label for="username">用户名:</label>
-    <input type="text" id="username" placeholder="输入用户名">
+  <!-- 登录表单 -->
+  <div id="loginForm" class="login-form">
+    <div class="form-group">
+      <label for="username">用户名:</label>
+      <input type="text" id="username" placeholder="输入用户名">
+    </div>
+    <div class="form-group">
+      <label for="password">密码:</label>
+      <input type="password" id="password" placeholder="输入密码">
+    </div>
+    <button id="loginBtn">登录</button>
+    <div id="status"></div>
   </div>
-  <div class="form-group">
-    <label for="password">密码:</label>
-    <input type="password" id="password" placeholder="输入密码">
+  
+  <!-- 已连接页面 -->
+  <div id="connectedPage" class="connected-page">
+    <h3>已连接</h3>
+    <div class="loader">
+      <div class="person">
+        <div class="head"></div>
+        <div class="body"></div>
+        <div class="arm left"></div>
+        <div class="arm right"></div>
+        <div class="leg left"></div>
+        <div class="leg right"></div>
+      </div>
+    </div>
+    <div class="connection-status">WebSocket 连接成功</div>
+    <div class="client-info">
+      <div>客户端ID: <span id="clientIdDisplay">-</span></div>
+      <div>用户名: <span id="usernameDisplay">-</span></div>
+      <div>当前页面: <span id="currentUrlDisplay">-</span></div>
+    </div>
+    <button id="backBtn" class="back-btn">返回</button>
   </div>
-  <button id="loginBtn">登录</button>
-  <div id="status"></div>
+  
   <script src="login.js"></script>
 </body>
 </html>

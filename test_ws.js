@@ -6,7 +6,7 @@ const token = 'eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhZG1pbiIsImlhdCI6MTc2OTA2MTA4Miwi
 
 console.log('尝试连接WebSocket...');
 
-const ws = new WebSocket('ws://localhost:8080/smarteCrawler/ws?token=' + encodeURIComponent(token));
+const ws = new WebSocket('ws://localhost:8090/smarteCrawler/ws?token=' + encodeURIComponent(token));
 
 ws.on('open', function open() {
   console.log('✅ WebSocket连接已成功建立');
@@ -17,7 +17,7 @@ ws.on('open', function open() {
     clientId: 'test_client_' + Date.now(),
     payload: {
       username: 'admin',
-      currentUrl: 'http://localhost:8080/test',
+      currentUrl: 'http://localhost:8090/test',
       supportTaskTypes: 'test_task',
       idleStatus: false
     },

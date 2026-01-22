@@ -1,6 +1,6 @@
 # 服务器配置
 server:
-  port: 8080  # 更改端口以避免冲突
+  port: 8090  # 更改端口以避免冲突
   servlet:
     context-path: /smarteCrawler
 
