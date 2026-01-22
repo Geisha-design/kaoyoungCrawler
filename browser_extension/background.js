@@ -49,7 +49,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   } else if (message.type === 'get_client_id') {
     // 返回客户端唯一标识
     sendResponse({ 
-      clientId: clientId,
+      clientId: chrome.runtime.id,
       success: true 
     });
   } else if (message.type === 'get_scheduled_tasks') {

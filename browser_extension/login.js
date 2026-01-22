@@ -45,6 +45,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     try {
+      // 获取浏览器扩展ID作为clientId
+      const extensionId = chrome.runtime.id;
+      
       // 调用后端登录接口
       const response = await fetch('http://localhost:8090/smarteCrawler/api/login', {
         method: 'POST',
@@ -53,7 +56,8 @@ document.addEventListener('DOMContentLoaded', function() {
         },
         body: JSON.stringify({
           username: username,
-          password: password
+          password: password,
+          clientId: extensionId  // 发送浏览器扩展ID作为客户端ID
         })
       });
       
@@ -63,7 +67,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // 保存JWT令牌到Chrome存储
         chrome.storage.local.set({
           jwtToken: result.data.token,
-          username: username
+          username: username,
+          clientId: extensionId  // 同时保存客户端ID
         }, function() {
           statusDiv.textContent = '登录成功，正在连接WebSocket...';
           statusDiv.className = 'connected';
@@ -110,6 +115,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     try {
+      // 获取浏览器扩展ID作为clientId
+      const extensionId = chrome.runtime.id;
+      
       // 调用后端注册接口
       const response = await fetch('http://localhost:8090/smarteCrawler/api/register', {
         method: 'POST',
@@ -118,7 +126,8 @@ document.addEventListener('DOMContentLoaded', function() {
         },
         body: JSON.stringify({
           username: username,
-          password: password
+          password: password,
+          clientId: extensionId  // 发送浏览器扩展ID作为客户端ID
         })
       });
       
@@ -206,7 +215,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         // 清除本地存储的JWT令牌
-        chrome.storage.local.remove(['jwtToken', 'username'], function() {
+        chrome.storage.local.remove(['jwtToken', 'username', 'clientId'], function() {
           // 重置界面状态
           loginForm.style.display = 'block';
           connectedPage.style.display = 'none';
@@ -246,18 +255,22 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // 显示连接成功页面
   function showConnectedPage(status) {
-    // 更新显示信息
-    clientIdDisplay.textContent = status.clientId || '-';
-    usernameDisplay.textContent = status.username || '-';
-    currentUrlDisplay.textContent = status.activeTabUrl ? 
-      new URL(status.activeTabUrl).hostname : '-';
-    
-    // 切换页面显示
-    loginForm.style.display = 'none';
-    connectedPage.style.display = 'block';
-    
-    statusDiv.textContent = '连接成功！';
-    statusDiv.className = 'connected';
+    // 从本地存储获取用户名和当前URL
+    chrome.storage.local.get(['username', 'currentUrl'], function(result) {
+      // 更新显示信息
+      clientIdDisplay.textContent = status.clientId || chrome.runtime.id || '-';
+      usernameDisplay.textContent = result.username || status.username || '-';
+      currentUrlDisplay.textContent = result.currentUrl ? 
+        new URL(result.currentUrl).hostname : (status.activeTabUrl ? 
+        new URL(status.activeTabUrl).hostname : '-');
+      
+      // 切换页面显示
+      loginForm.style.display = 'none';
+      connectedPage.style.display = 'block';
+      
+      statusDiv.textContent = '连接成功！';
+      statusDiv.className = 'connected';
+    });
   }
   
   // 检查当前状态
