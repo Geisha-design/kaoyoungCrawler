@@ -15,9 +15,14 @@ window.getClientId = async function() {
 document.addEventListener('DOMContentLoaded', function() {
   // 获取DOM元素
   const loginForm = document.getElementById('loginForm');
+  const registerForm = document.getElementById('registerForm');
   const connectedPage = document.getElementById('connectedPage');
   const loginBtn = document.getElementById('loginBtn');
+  const registerBtn = document.getElementById('registerBtn');
+  const showRegisterBtn = document.getElementById('showRegisterBtn');
+  const showLoginBtn = document.getElementById('showLoginBtn');
   const statusDiv = document.getElementById('status');
+  const regStatusDiv = document.getElementById('regStatus');
   const backBtn = document.getElementById('backBtn');
   
   // 获取显示元素
@@ -28,6 +33,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // 检查当前连接状态
   checkCurrentStatus();
   
+  // 登录按钮点击事件
   loginBtn.addEventListener('click', async function() {
     const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
@@ -77,6 +83,84 @@ document.addEventListener('DOMContentLoaded', function() {
       statusDiv.textContent = '登录失败: ' + error.message;
       statusDiv.className = 'disconnected';
     }
+  });
+  
+  // 注册按钮点击事件
+  registerBtn.addEventListener('click', async function() {
+    const username = document.getElementById('regUsername').value;
+    const password = document.getElementById('regPassword').value;
+    const confirmPassword = document.getElementById('regConfirmPassword').value;
+    
+    if (!username || !password || !confirmPassword) {
+      regStatusDiv.textContent = '请填写所有字段';
+      regStatusDiv.className = 'disconnected';
+      return;
+    }
+    
+    if (password !== confirmPassword) {
+      regStatusDiv.textContent = '两次输入的密码不一致';
+      regStatusDiv.className = 'disconnected';
+      return;
+    }
+    
+    if (password.length < 6) {
+      regStatusDiv.textContent = '密码长度至少为6位';
+      regStatusDiv.className = 'disconnected';
+      return;
+    }
+    
+    try {
+      // 调用后端注册接口
+      const response = await fetch('http://localhost:8090/smarteCrawler/api/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          username: username,
+          password: password
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (result.code === 200) {
+        regStatusDiv.textContent = '注册成功，请登录';
+        regStatusDiv.className = 'connected';
+        
+        // 清空注册表单
+        document.getElementById('regUsername').value = '';
+        document.getElementById('regPassword').value = '';
+        document.getElementById('regConfirmPassword').value = '';
+        
+        // 自动切换到登录页面
+        setTimeout(() => {
+          registerForm.style.display = 'none';
+          loginForm.style.display = 'block';
+          regStatusDiv.textContent = '';
+        }, 1500);
+      } else {
+        regStatusDiv.textContent = result.message || '注册失败';
+        regStatusDiv.className = 'disconnected';
+      }
+    } catch (error) {
+      console.error('注册错误:', error);
+      regStatusDiv.textContent = '注册失败: ' + error.message;
+      regStatusDiv.className = 'disconnected';
+    }
+  });
+  
+  // 显示注册页面
+  showRegisterBtn.addEventListener('click', function() {
+    loginForm.style.display = 'none';
+    registerForm.style.display = 'block';
+  });
+  
+  // 显示登录页面
+  showLoginBtn.addEventListener('click', function() {
+    registerForm.style.display = 'none';
+    loginForm.style.display = 'block';
+    regStatusDiv.textContent = '';
   });
   
   // 监听返回按钮点击

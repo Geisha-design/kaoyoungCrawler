@@ -291,6 +291,26 @@
 </head>
 <body>
   <div class="grid-bg"></div>
+  <!-- 注册表单 -->
+  <div id="registerForm" class="login-form" style="display: none;">
+    <h2 class="glow">注册账号</h2>
+    <div class="form-group">
+      <label for="regUsername">用户名:</label>
+      <input type="text" id="regUsername" placeholder="输入用户名">
+    </div>
+    <div class="form-group">
+      <label for="regPassword">密码:</label>
+      <input type="password" id="regPassword" placeholder="输入密码">
+    </div>
+    <div class="form-group">
+      <label for="regConfirmPassword">确认密码:</label>
+      <input type="password" id="regConfirmPassword" placeholder="确认密码">
+    </div>
+    <button id="registerBtn" class="glow">注册</button>
+    <button id="showLoginBtn" class="back-btn">返回登录</button>
+    <div id="regStatus"></div>
+  </div>
+  
   <!-- 登录表单 -->
   <div id="loginForm" class="login-form">
     <h2 class="glow">爬虫助手</h2>
@@ -303,6 +323,7 @@
       <input type="password" id="password" placeholder="输入密码">
     </div>
     <button id="loginBtn" class="glow">登录</button>
+    <button id="showRegisterBtn" class="back-btn">注册账号</button>
     <div id="status"></div>
   </div>
   

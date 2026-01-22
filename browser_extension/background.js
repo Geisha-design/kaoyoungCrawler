@@ -1,7 +1,7 @@
 // 全局变量
 let ws = null;
 let isConnected = false;
-let clientId = null;
+let clientId = chrome.runtime.id; // 使用浏览器扩展的唯一ID作为默认clientId
 let jwtToken = null;
 let username = null;
 let cachedScripts = {}; // 存储缓存的脚本
@@ -40,6 +40,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       isConnected, 
       clientId, 
       activeTabUrl,
+      username, // 添加用户名信息
       cachedScripts: Object.keys(cachedScripts),
       online: isConnected,
       idleStatus: clientIdleStatus,
@@ -289,8 +290,15 @@ function handleMessage(message) {
   switch (message.type) {
     case 'auth_success':
       clientId = message.payload.clientId;
+      // 如果服务器在认证成功时提供了用户名信息，也要更新
+      if (message.payload.username) {
+        username = message.payload.username;
+      }
       // 保存clientId到本地存储
-      chrome.storage.local.set({ clientId: clientId });
+      chrome.storage.local.set({ 
+        clientId: clientId,
+        username: username // 同时保存用户名到本地存储
+      });
       // 发送注册消息
       sendRegisterMessage();
       break;
@@ -316,6 +324,10 @@ function handleMessage(message) {
       handleIdleControlCommand(message.payload);
       break;
       
+    case 'register_success':
+      // 处理注册成功消息，确保用户名被正确设置
+      console.log('客户端注册成功');
+      break;
     case 'ping': // 服务端ping消息，需要回应pong
       // 发送pong回应
       sendPong(message.payload.requestId);
@@ -609,8 +621,12 @@ chrome.storage.local.get(['jwtToken', 'username', 'clientId'], function(result) 
   if (result.jwtToken) {
     jwtToken = result.jwtToken;
     username = result.username;
-    clientId = result.clientId;
+    // 如果本地存储中有clientId则使用，否则使用扩展ID
+    clientId = result.clientId || chrome.runtime.id;
     connectWebSocket();
+  } else {
+    // 即使没有JWT令牌，也要确保clientId被设置
+    clientId = chrome.runtime.id;
   }
 });
 
