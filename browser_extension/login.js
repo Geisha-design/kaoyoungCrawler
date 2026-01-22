@@ -1,3 +1,16 @@
+// 定义全局函数，以便在任何地方都可以调用
+window.getClientId = async function() {
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendMessage({ type: 'get_client_id' }, function(response) {
+      if (chrome.runtime.lastError) {
+        reject(chrome.runtime.lastError);
+      } else {
+        resolve(response);
+      }
+    });
+  });
+};
+
 // 登录逻辑
 document.addEventListener('DOMContentLoaded', function() {
   // 获取DOM元素
@@ -70,6 +83,68 @@ document.addEventListener('DOMContentLoaded', function() {
   backBtn.addEventListener('click', function() {
     connectedPage.style.display = 'none';
     loginForm.style.display = 'block';
+  });
+  
+  // 监听复制客户端ID按钮点击
+  const copyClientIdBtn = document.getElementById('copyClientIdBtn');
+  copyClientIdBtn.addEventListener('click', async function() {
+    try {
+      const response = await window.getClientId();
+      if (response && response.clientId) {
+        // 复制客户端ID到剪贴板
+        await navigator.clipboard.writeText(response.clientId);
+        statusDiv.textContent = '客户端ID已复制到剪贴板';
+        statusDiv.className = 'connected';
+        
+        // 3秒后清除状态消息
+        setTimeout(() => {
+          statusDiv.textContent = '';
+        }, 3000);
+      } else {
+        statusDiv.textContent = '无法获取客户端ID';
+        statusDiv.className = 'disconnected';
+      }
+    } catch (error) {
+      console.error('获取客户端ID失败:', error);
+      statusDiv.textContent = '获取客户端ID失败: ' + error.message;
+      statusDiv.className = 'disconnected';
+    }
+  });
+  
+  // 监听退出登录按钮点击
+  const logoutBtn = document.getElementById('logoutBtn');
+  logoutBtn.addEventListener('click', async function() {
+    try {
+      // 通知background脚本关闭WebSocket连接
+      chrome.runtime.sendMessage({ type: 'logout' }, function(response) {
+        if (chrome.runtime.lastError) {
+          console.error('发送退出消息失败:', chrome.runtime.lastError);
+        }
+        
+        // 清除本地存储的JWT令牌
+        chrome.storage.local.remove(['jwtToken', 'username'], function() {
+          // 重置界面状态
+          loginForm.style.display = 'block';
+          connectedPage.style.display = 'none';
+          
+          // 清空输入框
+          document.getElementById('username').value = '';
+          document.getElementById('password').value = '';
+          
+          statusDiv.textContent = '已退出登录';
+          statusDiv.className = 'disconnected';
+          
+          // 3秒后清除状态消息
+          setTimeout(() => {
+            statusDiv.textContent = '';
+          }, 3000);
+        });
+      });
+    } catch (error) {
+      console.error('退出登录失败:', error);
+      statusDiv.textContent = '退出登录失败: ' + error.message;
+      statusDiv.className = 'disconnected';
+    }
   });
   
   // 检查WebSocket连接状态

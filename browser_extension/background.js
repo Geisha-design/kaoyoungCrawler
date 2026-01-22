@@ -26,6 +26,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     username = message.username;
     connectWebSocket();
     sendResponse({ success: true });
+  } else if (message.type === 'logout') {
+    // 处理退出登录，关闭WebSocket连接
+    disconnectWebSocket();
+    sendResponse({ success: true });
+    return true; // 异步响应
   } else if (message.type === 'execute_script') {
     // 执行特定脚本
     executeScriptOnActiveTab(message.scriptId, message.scriptContent);
@@ -39,6 +44,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       online: isConnected,
       idleStatus: clientIdleStatus,
       idleSince: idleSince
+    });
+  } else if (message.type === 'get_client_id') {
+    // 返回客户端唯一标识
+    sendResponse({ 
+      clientId: clientId,
+      success: true 
     });
   } else if (message.type === 'get_scheduled_tasks') {
     // 获取定时任务列表（现在由服务端管理，客户端不需要本地存储）
@@ -149,6 +160,29 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
     checkDomainScriptMatch(tab.url);
   }
 });
+
+// 断开WebSocket连接
+function disconnectWebSocket() {
+  if (ws) {
+    // 关闭WebSocket连接
+    ws.close();
+    ws = null;
+  }
+  
+  // 重置连接状态
+  isConnected = false;
+  jwtToken = null;
+  clientId = null;
+  username = null;
+  
+  // 更新图标状态
+  updateIcon('disconnected');
+  
+  // 停止心跳
+  stopHeartbeat();
+  
+  console.log('WebSocket连接已关闭');
+}
 
 // 连接WebSocket
 function connectWebSocket() {
