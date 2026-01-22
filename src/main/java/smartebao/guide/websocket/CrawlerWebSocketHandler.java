@@ -2,8 +2,11 @@ package smartebao.guide.websocket;
 
 import com.alibaba.fastjson.JSON;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
+import org.springframework.web.context.ContextLoader;
+import org.springframework.web.context.support.WebApplicationContextUtils;
 import smartebao.guide.entity.CrawlerResult;
 import smartebao.guide.entity.CrawlerScript;
 import smartebao.guide.mapper.CrawlerClientMapper;
@@ -30,22 +33,12 @@ public class CrawlerWebSocketHandler {
     // 存储客户端信息
     private static Map<String, String> clientInfoMap = new ConcurrentHashMap<>();
 
-    @Autowired
-    private JwtUtil jwtUtil;
-
-    @Autowired
-    @Lazy
-    private CrawlerClientMapper crawlerClientMapper;
-
-    @Autowired
-    @Lazy
-    private CrawlerResultMapper crawlerResultMapper;
-
-    @Autowired
-    private WebSocketService webSocketService;
-
-    @Autowired
-    private ClientCacheService clientCacheService;
+    // 使用静态变量存储必要的实例
+    private static JwtUtil jwtUtil;
+    private static CrawlerClientMapper crawlerClientMapper;
+    private static CrawlerResultMapper crawlerResultMapper;
+    private static WebSocketService webSocketService;
+    private static ClientCacheService clientCacheService;
 
     /**
      * 连接建立成功调用的方法
@@ -54,9 +47,39 @@ public class CrawlerWebSocketHandler {
     public void onOpen(Session session) {
         // 从session中获取JWT token进行验证
         String token = getSessionAttribute(session, "token");
-        if (token == null || !jwtUtil.validateToken(token)) {
+        
+        // 检查token是否在握手阶段已验证
+        Object tokenValidObj = session.getUserProperties().get("token_valid");
+        boolean tokenValid = tokenValidObj instanceof Boolean ? (Boolean) tokenValidObj : true;
+        
+        // 确保jwtUtil已初始化
+        if (jwtUtil == null) {
+            // 从WebSocketConfigurator获取Bean
+            jwtUtil = WebSocketConfigurator.getJwtUtil();
+            crawlerClientMapper = WebSocketConfigurator.getCrawlerClientMapper();
+            crawlerResultMapper = WebSocketConfigurator.getCrawlerResultMapper();
+            webSocketService = WebSocketConfigurator.getWebSocketService();
+            clientCacheService = WebSocketConfigurator.getClientCacheService();
+        }
+        
+        if (jwtUtil == null) {
             try {
-                session.close();
+                // 如果仍然无法获取jwtUtil，关闭连接
+                CloseReason closeReason = new CloseReason(CloseReason.CloseCodes.UNEXPECTED_CONDITION, "Authentication service unavailable");
+                session.close(closeReason);
+                System.out.println("JWT验证服务不可用，已关闭连接");
+                return;
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        
+        if (!tokenValid || token == null || !jwtUtil.validateToken(token)) {
+            try {
+                // 发送403错误码并关闭连接
+                CloseReason closeReason = new CloseReason(CloseReason.CloseCodes.VIOLATED_POLICY, "Authentication failed");
+                session.close(closeReason);
+                System.out.println("WebSocket连接认证失败，已关闭连接");
                 return;
             } catch (IOException e) {
                 e.printStackTrace();

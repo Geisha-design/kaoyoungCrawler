@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket 测试 - 端口8090</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .log {
+            border: 1px solid #ccc;
+            height: 300px;
+            overflow-y: scroll;
+            padding: 10px;
+            margin: 10px 0;
+            background-color: #f9f9f9;
+        }
+        button {
+            padding: 8px 16px;
+            margin: 5px;
+        }
+        input[type="text"] {
+            width: 300px;
+            padding: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>WebSocket 连接测试 - 端口8090</h1>
+        <div>
+            <label for="token">JWT Token:</label>
+            <input type="text" id="token" placeholder="请输入有效的JWT token">
+            <button onclick="connect()">连接</button>
+            <button onclick="disconnect()">断开</button>
+        </div>
+        <div>
+            <label for="testToken">测试Token:</label>
+            <input type="text" id="testToken" placeholder="输入要测试的token">
+            <button onclick="testToken()">测试Token</button>
+        </div>
+        <div>
+            <p>当前WebSocket URL: <strong>ws://localhost:8090/smarteCrawler/ws?token=[TOKEN]</strong></p>
+        </div>
+        <div class="log" id="log"></div>
+    </div>
+
+    <script>
+        let ws = null;
+
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            logDiv.innerHTML += `<div>${new Date().toLocaleTimeString()} - ${message}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        async function connect() {
+            const tokenInput = document.getElementById('token');
+            const token = tokenInput.value.trim();
+
+            if (!token) {
+                alert('请输入JWT token');
+                return;
+            }
+
+            try {
+                // 使用新端口8090和正确的路径前缀
+                const wsUrl = `ws://localhost:8090/smarteCrawler/ws?token=${encodeURIComponent(token)}`;
+                log(`尝试连接到: ${wsUrl}`);
+
+                ws = new WebSocket(wsUrl);
+
+                ws.onopen = function(event) {
+                    log('✅ WebSocket连接已建立');
+                };
+
+                ws.onmessage = function(event) {
+                    log('📥 收到消息: ' + event.data);
+                };
+
+                ws.onclose = function(event) {
+                    log(`❌ WebSocket连接已关闭: ${event.code} - ${event.reason}`);
+                };
+
+                ws.onerror = function(error) {
+                    log('🚨 WebSocket错误: ' + error);
+                };
+            } catch (error) {
+                log('连接错误: ' + error.message);
+            }
+        }
+
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+
+        async function testToken() {
+            try {
+                // 使用fetch请求登录接口来获取有效token
+                const response = await fetch('http://localhost:8090/smarteCrawler/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: 'admin',
+                        password: '123456'
+                    })
+                });
+
+                const result = await response.json();
+                log(`登录响应: ${JSON.stringify(result)}`);
+                
+                if (result.code === 200) {
+                    document.getElementById('token').value = result.data.token;
+                    log('已填入有效token，请点击"连接"按钮进行测试');
+                } else {
+                    log('登录失败，无法获取有效token');
+                }
+            } catch (error) {
+                log('获取token失败: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>
