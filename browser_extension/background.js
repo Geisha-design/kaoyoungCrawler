@@ -114,6 +114,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     notifyIdleStatusToBackend(true);
     
     sendResponse({ success: true });
+    return true; // 异步响应
   } else if (message.type === 'user_active') {
     // 用户变为活跃状态
     clientIdleStatus = false;
@@ -123,10 +124,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     notifyIdleStatusToBackend(false);
     
     sendResponse({ success: true });
+    return true; // 异步响应
   } else if (message.type === 'execute_idle_tasks') {
     // 执行空闲任务
     executeIdleTasks(message.idleSince, message.currentTime);
     sendResponse({ success: true });
+    return true; // 异步响应
   }
   
   return true;
@@ -562,6 +565,31 @@ function checkDomainScriptMatch(url) {
     }
   } catch (e) {
     console.error('解析URL错误:', e);
+  }
+}
+
+// 通知后端客户端空闲状态
+function notifyIdleStatusToBackend(isIdle) {
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    console.error('WebSocket未连接，无法通知空闲状态');
+    return;
+  }
+  
+  const idleStatusMessage = {
+    type: 'idle_status_update',
+    payload: {
+      isIdle: isIdle,
+      timestamp: Date.now()
+    },
+    clientId: clientId,
+    timestamp: Date.now()
+  };
+  
+  try {
+    ws.send(JSON.stringify(idleStatusMessage));
+    console.log('发送空闲状态更新:', idleStatusMessage);
+  } catch (error) {
+    console.error('发送空闲状态更新失败:', error);
   }
 }
 

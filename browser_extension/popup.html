@@ -4,9 +4,23 @@
   <meta charset="UTF-8">
   <style>
     body {
-      width: 300px;
-      padding: 10px;
-      font-family: Arial, sans-serif;
+      width: 320px;
+      padding: 20px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+      color: #e0e0ff;
+      margin: 0;
+      border-radius: 10px;
+      box-shadow: 0 0 20px rgba(0, 195, 255, 0.5);
+      backdrop-filter: blur(10px);
+      min-height: 300px;
+    }
+    
+    h1, h2, h3 {
+      color: #4fc3f7;
+      text-align: center;
+      text-shadow: 0 0 10px rgba(79, 195, 247, 0.7);
+      margin: 10px 0;
     }
     
     .login-form {
@@ -19,38 +33,97 @@
     }
     
     .form-group {
-      margin-bottom: 10px;
+      margin-bottom: 15px;
+      position: relative;
     }
+    
     label {
       display: block;
-      margin-bottom: 5px;
+      margin-bottom: 8px;
+      color: #81d4fa;
+      font-weight: 500;
     }
+    
     input {
       width: 100%;
-      padding: 5px;
+      padding: 12px;
+      background: rgba(30, 30, 60, 0.7);
+      border: 1px solid #29b6f6;
+      border-radius: 5px;
+      color: #e0e0ff;
       box-sizing: border-box;
+      transition: all 0.3s ease;
     }
+    
+    input:focus {
+      outline: none;
+      border-color: #00bcd4;
+      box-shadow: 0 0 10px rgba(0, 188, 212, 0.5);
+    }
+    
+    input::placeholder {
+      color: #90a4ae;
+    }
+    
     button {
       width: 100%;
-      padding: 8px;
-      background-color: #4CAF50;
+      padding: 12px;
+      background: linear-gradient(45deg, #00bcd4, #29b6f6);
       color: white;
       border: none;
+      border-radius: 5px;
       cursor: pointer;
-    }
-    button:hover {
-      background-color: #45a049;
-    }
-    #status {
+      font-weight: bold;
       margin-top: 10px;
-      padding: 5px;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    button:hover {
+      background: linear-gradient(45deg, #29b6f6, #00bcd4);
+      box-shadow: 0 0 15px rgba(0, 188, 212, 0.7);
+      transform: translateY(-2px);
+    }
+    
+    button:active {
+      transform: translateY(1px);
+    }
+    
+    button::after {
+      content: "";
+      position: absolute;
+      top: -50%;
+      left: -60%;
+      width: 20px;
+      height: 200%;
+      background: rgba(255, 255, 255, 0.3);
+      transform: rotate(30deg);
+      transition: all 0.8s;
+    }
+    
+    button:hover::after {
+      left: 120%;
+    }
+    
+    #status {
+      margin-top: 15px;
+      padding: 8px;
       text-align: center;
+      border-radius: 4px;
+      font-size: 14px;
     }
+    
     .connected {
-      color: green;
+      color: #4caf50;
+      background: rgba(76, 175, 80, 0.1);
+      border: 1px solid rgba(76, 175, 80, 0.3);
     }
+    
     .disconnected {
-      color: red;
+      color: #f44336;
+      background: rgba(244, 67, 54, 0.1);
+      border: 1px solid rgba(244, 67, 54, 0.3);
     }
     
     /* 动画小人样式 */
@@ -72,64 +145,70 @@
     .head {
       width: 20px;
       height: 20px;
-      background: #333;
+      background: #4fc3f7;
       border-radius: 50%;
       position: absolute;
       top: 0;
       left: 10px;
+      box-shadow: 0 0 8px rgba(79, 195, 247, 0.8);
     }
     
     .body {
       width: 4px;
       height: 20px;
-      background: #333;
+      background: #4fc3f7;
       position: absolute;
       top: 20px;
       left: 19px;
+      box-shadow: 0 0 5px rgba(79, 195, 247, 0.6);
     }
     
     .arm.left {
       width: 4px;
       height: 15px;
-      background: #333;
+      background: #4fc3f7;
       position: absolute;
       top: 22px;
       left: 10px;
       transform-origin: top center;
       animation: swing-left 1s infinite alternate;
+      box-shadow: 0 0 5px rgba(79, 195, 247, 0.6);
     }
     
     .arm.right {
       width: 4px;
       height: 15px;
-      background: #333;
+      background: #4fc3f7;
       position: absolute;
       top: 22px;
       left: 24px;
       transform-origin: top center;
       animation: swing-right 1s infinite alternate;
+      box-shadow: 0 0 5px rgba(79, 195, 247, 0.6);
     }
     
     .leg.left {
       width: 4px;
       height: 15px;
-      background: #333;
+      background: #4fc3f7;
       position: absolute;
       top: 40px;
       left: 16px;
       transform-origin: top center;
       animation: step-left 1s infinite alternate;
+      box-shadow: 0 0 5px rgba(79, 195, 247, 0.6);
     }
     
     .leg.right {
       width: 4px;
       height: 15px;
-      background: #333;
+      background: #4fc3f7;
       position: absolute;
       top: 40px;
       left: 20px;
       transform-origin: top center;
       animation: step-right 1s infinite alternate;
+      box-shadow: 0 0 5px rgba(79, 195, 247, 0.6);
     }
     
     @keyframes swing-left {
@@ -156,28 +235,65 @@
       font-size: 16px;
       font-weight: bold;
       margin-top: 10px;
-      color: #28a745;
+      color: #4fc3f7;
+      text-shadow: 0 0 5px rgba(79, 195, 247, 0.5);
     }
     
     .client-info {
       margin-top: 15px;
-      font-size: 12px;
-      color: #666;
+      font-size: 13px;
+      color: #bbdefb;
+    }
+    
+    .client-info div {
+      margin: 5px 0;
+    }
+    
+    .client-info span {
+      color: #e3f2fd;
+      font-weight: 500;
     }
     
     .back-btn {
-      background-color: #6c757d;
-      margin-top: 15px;
+      background: linear-gradient(45deg, #f44336, #e91e63);
+      margin-top: 10px;
     }
     
     .back-btn:hover {
-      background-color: #5a6268;
+      background: linear-gradient(45deg, #e91e63, #f44336);
+      box-shadow: 0 0 15px rgba(244, 67, 54, 0.7);
+    }
+    
+    .glow {
+      animation: glow-pulse 2s infinite;
+    }
+    
+    @keyframes glow-pulse {
+      0% { box-shadow: 0 0 5px rgba(79, 195, 247, 0.5); }
+      50% { box-shadow: 0 0 20px rgba(79, 195, 247, 0.8); }
+      100% { box-shadow: 0 0 5px rgba(79, 195, 247, 0.5); }
+    }
+    
+    .grid-bg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: 
+        linear-gradient(rgba(0, 195, 255, 0.1) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 195, 255, 0.1) 1px, transparent 1px);
+      background-size: 20px 20px;
+      z-index: -1;
+      opacity: 0.3;
     }
   </style>
 </head>
 <body>
+  <div class="grid-bg"></div>
   <!-- 登录表单 -->
   <div id="loginForm" class="login-form">
+    <h2 class="glow">爬虫助手</h2>
     <div class="form-group">
       <label for="username">用户名:</label>
       <input type="text" id="username" placeholder="输入用户名">
@@ -186,13 +302,13 @@
       <label for="password">密码:</label>
       <input type="password" id="password" placeholder="输入密码">
     </div>
-    <button id="loginBtn">登录</button>
+    <button id="loginBtn" class="glow">登录</button>
     <div id="status"></div>
   </div>
   
   <!-- 已连接页面 -->
   <div id="connectedPage" class="connected-page">
-    <h3>已连接</h3>
+    <h3 class="glow">已连接</h3>
     <div class="loader">
       <div class="person">
         <div class="head"></div>
@@ -209,9 +325,9 @@
       <div>用户名: <span id="usernameDisplay">-</span></div>
       <div>当前页面: <span id="currentUrlDisplay">-</span></div>
     </div>
-    <button id="copyClientIdBtn" class="back-btn">复制客户端ID</button>
-    <button id="logoutBtn" class="back-btn" style="background-color: #dc3545;">退出登录</button>
-    <button id="backBtn" class="back-btn">返回</button>
+    <button id="copyClientIdBtn" class="back-btn" style="display: none;">复制客户端ID</button>
+    <button id="logoutBtn" class="back-btn glow">退出登录</button>
+    <button id="backBtn" class="back-btn" style="display: none;">返回</button>
   </div>
   
   <script src="login.js"></script>

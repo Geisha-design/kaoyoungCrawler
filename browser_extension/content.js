@@ -33,10 +33,14 @@ function goIdle() {
   console.log('用户进入空闲状态');
   
   // 通知background脚本用户进入空闲状态
-  chrome.runtime.sendMessage({
-    type: 'user_idle',
-    timestamp: Date.now()
-  });
+  try {
+    chrome.runtime.sendMessage({
+      type: 'user_idle',
+      timestamp: Date.now()
+    });
+  } catch (error) {
+    console.warn('无法发送用户空闲状态消息:', error.message);
+  }
   
   // 触发空闲时的任务执行
   executeIdleTasks();
@@ -109,12 +113,16 @@ function executeCrawlScript(scriptContent, taskId) {
     const result = scriptFunction();
     
     // 将结果发送回background脚本
-    chrome.runtime.sendMessage({
-      type: 'crawl_result_from_content',
-      taskId: taskId,
-      result: result,
-      status: 'success'
-    });
+    try {
+      chrome.runtime.sendMessage({
+        type: 'crawl_result_from_content',
+        taskId: taskId,
+        result: result,
+        status: 'success'
+      });
+    } catch (error) {
+      console.warn('无法发送爬取结果消息:', error.message);
+    }
     
     return result;
   } catch (error) {
@@ -197,12 +205,16 @@ window.addEventListener('message', function(event) {
   
   if (event.data.type === 'CRAWLER_RESULT') {
     // 将结果转发给background脚本
-    chrome.runtime.sendMessage({
-      type: 'crawl_result_from_content',
-      taskId: event.data.taskId,
-      result: event.data.result,
-      status: event.data.status
-    });
+    try {
+      chrome.runtime.sendMessage({
+        type: 'crawl_result_from_content',
+        taskId: event.data.taskId,
+        result: event.data.result,
+        status: event.data.status
+      });
+    } catch (error) {
+      console.warn('无法转发爬取结果消息:', error.message);
+    }
   }
 });
 
