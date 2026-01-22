@@ -31,6 +31,9 @@ public class SecurityConfig {
                         .requestMatchers(new AntPathRequestMatcher("/ws/**")).permitAll()
                         .requestMatchers(new AntPathRequestMatcher("/smarteCrawler/ws")).permitAll()
                         .requestMatchers(new AntPathRequestMatcher("/smarteCrawler/ws/**")).permitAll()
+
+
+                        .requestMatchers(new AntPathRequestMatcher("/api/**")).permitAll()
                         // 其他所有请求需要认证
                         .anyRequest().authenticated()
                 )

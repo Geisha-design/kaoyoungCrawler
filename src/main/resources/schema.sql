@@ -52,6 +52,7 @@ CREATE TABLE `crawler_task` (
   `execute_on_idle` tinyint(1) DEFAULT 0 COMMENT '是否仅在空闲时执行（0=否，1=是）',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `status` varchar(20) DEFAULT 'pending' COMMENT '任务状态（pending/processing/success/fail）',
+  `priority` int(11) DEFAULT 1 COMMENT '任务优先级',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_task_id` (`task_id`),
   KEY `idx_client_id` (`client_id`)
@@ -111,7 +112,7 @@ CREATE TABLE `crawler_scheduled_task` (
 INSERT INTO `crawler_user` (`username`, `password`) VALUES ('admin', '123456');
 INSERT INTO `crawler_script` (`script_id`, `task_type`, `script_content`, `description`, `domain_pattern`) VALUES 
 ('script_1', 'product_crawl', 'function crawlProduct() { return {name: document.querySelector(".product-name")?.innerText || "", price: document.querySelector(".product-price")?.innerText || ""}; } crawlProduct();', '电商商品基础信息爬取', 'taobao\\.com|tmall\\.com'),
-('script_2', 'article_crawl', 'function crawlArticle() { return {title: document.querySelector("h1")?.innerText || "", author: document.querySelector(".article-author")?.innerText || ""}; } crawlArticle();', '资讯文章基础信息爬取', 'sohu\\.com|sina\\.com\\.cn');
+('script_2', 'article_crawl', 'function crawlArticle() { return {title: document.querySelector("h1")?.innerText || "", author: document.querySelector(".article-author")?.innerText || ""}; } crawlArticle();', '资讯文章基础参数信息爬取', 'sohu\\.com|sina\\.com\\.cn');
 -- 初始化测试定时任务
 INSERT INTO `crawler_scheduled_task` (`task_key`, `client_id`, `username`, `script_id`, `domain`, `interval`, `enabled`, `execute_on_idle`, `task_name`) 
 VALUES ('taobao_product_01', 'client_test_001', 'admin', 'script_1', 'taobao\\.com', 300000, 1, 0, '淘宝商品5分钟定时爬取');

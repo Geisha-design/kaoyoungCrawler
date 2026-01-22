@@ -28,14 +28,16 @@ public class CrawlerTask {
     
     private Integer timeout;
     
-    @TableField("task_params")
+    @TableField("params")
     private String taskParams; // 任务参数（新增字段以匹配使用场景）
     
     @TableField("target_clients")
     private String targetClients; // 目标客户端（新增字段以匹配使用场景）
     
+    @TableField("priority")
     private Integer priority; // 优先级（新增字段以匹配使用场景）
     
+    @TableField("params")
     private String params; // 任务额外参数（JSON格式）
     
     @TableField("execute_on_idle")
@@ -44,6 +46,7 @@ public class CrawlerTask {
     @TableField("create_time")
     private Date createTime;
     
+    @TableField("status")
     private String status; // pending/processing/success/fail
 
     // 自动生成的Getter和Setter方法
