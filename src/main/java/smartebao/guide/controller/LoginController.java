@@ -1,6 +1,7 @@
 package smartebao.guide.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,6 +17,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api")
+@Tag(name = "客户端登陆状态管理", description = "用于管理客户端登陆/注册/登出状态的API")
 public class LoginController {
 
     @Autowired
@@ -50,6 +52,7 @@ public class LoginController {
                 QueryWrapper<CrawlerClient> clientWrapper = new QueryWrapper<>();
                 clientWrapper.eq("client_id", clientId);
                 clientWrapper.eq("status", "offline");
+                clientWrapper.eq("username", username);
                 CrawlerClient existingClient = clientMapper.selectOne(clientWrapper);
 
                 if (existingClient != null) {
@@ -157,6 +160,7 @@ public class LoginController {
                 // 更新客户端状态为离线
                 QueryWrapper<CrawlerClient> clientWrapper = new QueryWrapper<>();
                 clientWrapper.eq("client_id", clientId);
+                clientWrapper.eq("username", username);
                 CrawlerClient existingClient = clientMapper.selectOne(clientWrapper);
                 
                 if (existingClient != null) {
