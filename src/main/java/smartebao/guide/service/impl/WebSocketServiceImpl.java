@@ -235,10 +235,11 @@ public class WebSocketServiceImpl implements WebSocketService {
     public boolean isClientConnected(String clientId) {
         // 检查WebSocket会话是否在线
         boolean isWebSocketConnected = CrawlerWebSocketHandler.isClientOnline(clientId);
-        
+        System.out.println("WebSocket连接状态: " + isWebSocketConnected);
         // 同时检查数据库状态
         boolean isDatabaseOnline = isClientOnlineInDatabase(clientId);
-        
+        System.out.println("数据库连接状态: " + isDatabaseOnline);
+
         // 只有当WebSocket连接和数据库状态都表明客户端在线时才认为客户端已连接
         return isWebSocketConnected && isDatabaseOnline;
     }

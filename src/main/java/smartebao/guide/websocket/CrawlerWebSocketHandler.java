@@ -92,6 +92,8 @@ public class CrawlerWebSocketHandler {
         String username = jwtUtil.getUsernameFromToken(token);
         String clientId = generateOrGetClientId(username); // 根据用户名生成或获取已存在的clientId
         
+        System.out.println("认证成功，准备发送认证成功消息 - clientId: " + clientId + ", username: " + username);
+        
         // 发送认证成功消息，通知客户端可以进行注册
         AuthSuccessMessage authMsg = new AuthSuccessMessage();
         authMsg.setType("auth_success");
@@ -120,6 +122,8 @@ public class CrawlerWebSocketHandler {
             webSocketService.updateClientStatus(clientId, "offline");
             
             System.out.println("客户端 " + clientId + " 已断开连接");
+        } else {
+            System.out.println("WebSocket连接已关闭，但未找到对应的clientId");
         }
     }
 
@@ -189,7 +193,9 @@ public class CrawlerWebSocketHandler {
             // 保存或更新客户端信息
             smartebao.guide.entity.CrawlerClient client = crawlerClientMapper.selectOne(
                 new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<smartebao.guide.entity.CrawlerClient>()
-                    .eq("client_id", clientId));
+                    .eq("client_id", clientId)
+                        .eq("username",username)
+                        .eq("status","online"));
             if (client == null) {
                 client = new smartebao.guide.entity.CrawlerClient();
                 client.setClientId(clientId);

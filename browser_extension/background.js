@@ -234,12 +234,24 @@ function disconnectWebSocket() {
 
 // 连接WebSocket
 function connectWebSocket() {
-  if (isConnected || !jwtToken) {
+  // 确保在连接前清理任何现有连接
+  if (ws) {
+    try {
+      ws.close();
+    } catch (e) {
+      console.warn('关闭现有WebSocket连接时出错:', e);
+    }
+    ws = null;
+  }
+  
+  if (!jwtToken) {
+    console.log('缺少JWT令牌，无法建立WebSocket连接');
     return;
   }
   
   try {
     const wsUrl = `ws://localhost:8090/smarteCrawler/ws?token=${jwtToken}`;
+    console.log('尝试连接WebSocket:', wsUrl);
     ws = new WebSocket(wsUrl);
     
     ws.onopen = function(event) {
@@ -430,17 +442,25 @@ function handleIdleControlCommand(payload) {
   switch (payload.command) {
     case 'set_idle_threshold':
       // 设置空闲阈值
-      chrome.runtime.sendMessage({
-        type: 'set_idle_threshold',
-        threshold: payload.threshold || 300000 // 默认5分钟
-      });
+      try {
+        chrome.runtime.sendMessage({
+          type: 'set_idle_threshold',
+          threshold: payload.threshold || 300000 // 默认5分钟
+        });
+      } catch (error) {
+        console.error('发送空闲阈值设置命令失败:', error);
+      }
       break;
       
     case 'check_idle_status':
       // 检查空闲状态
-      chrome.runtime.sendMessage({
-        type: 'check_idle_status'
-      });
+      try {
+        chrome.runtime.sendMessage({
+          type: 'check_idle_status'
+        });
+      } catch (error) {
+        console.error('发送检查空闲状态命令失败:', error);
+      }
       break;
       
     case 'force_idle_execution':
@@ -463,22 +483,48 @@ function sendRegisterMessage() {
   
   // 获取当前活动标签页的URL
   chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-    const currentUrl = tabs[0] ? tabs[0].url : '';
-    activeTabUrl = currentUrl;
+    let currentUrl = tabs[0] ? tabs[0].url : '';
     
-    const registerMessage = {
-      type: 'register',
-      payload: {
-        username: username,
-        currentUrl: currentUrl,
-        supportTaskTypes: 'product_crawl,article_crawl,idle_task', // 添加空闲任务类型
-        idleStatus: clientIdleStatus // 发送当前空闲状态
-      },
-      clientId: clientId,
-      timestamp: Date.now()
-    };
-    
-    ws.send(JSON.stringify(registerMessage));
+    // 如果没有活动标签页，尝试获取任意标签页的URL
+    if (!currentUrl) {
+      chrome.tabs.query({}, function(allTabs) {
+        if (allTabs && allTabs.length > 0) {
+          currentUrl = allTabs[0].url || '';
+        }
+        
+        activeTabUrl = currentUrl;
+        
+        const registerMessage = {
+          type: 'register',
+          payload: {
+            username: username,
+            currentUrl: currentUrl,
+            supportTaskTypes: 'product_crawl,article_crawl,idle_task', // 添加空闲任务类型
+            idleStatus: clientIdleStatus // 发送当前空闲状态
+          },
+          clientId: clientId,
+          timestamp: Date.now()
+        };
+        
+        ws.send(JSON.stringify(registerMessage));
+      });
+    } else {
+      activeTabUrl = currentUrl;
+      
+      const registerMessage = {
+        type: 'register',
+        payload: {
+          username: username,
+          currentUrl: currentUrl,
+          supportTaskTypes: 'product_crawl,article_crawl,idle_task', // 添加空闲任务类型
+          idleStatus: clientIdleStatus // 发送当前空闲状态
+        },
+        clientId: clientId,
+        timestamp: Date.now()
+      };
+      
+      ws.send(JSON.stringify(registerMessage));
+    }
   });
 }
 
@@ -529,21 +575,111 @@ async function handleTaskCommand(payload) {
   }
   
   // 在当前活动标签页执行脚本
+  // 如果没有活动标签页，尝试获取所有标签页中的任意一个
   executeScriptOnActiveTab(scriptId, script.scriptContent, taskId);
 }
 
 // 在当前活动标签页执行脚本
 async function executeScriptOnActiveTab(scriptId, scriptContent, taskId = null) {
   try {
-    const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
+    // 首先尝试获取活动标签页
+    let tabs = await chrome.tabs.query({active: true, currentWindow: true});
+    
+    // 如果没有活动标签页，尝试获取任意一个标签页
+    if (!tabs || tabs.length === 0) {
+      console.log('没有找到活动的标签页，尝试获取任意标签页');
+      tabs = await chrome.tabs.query({currentWindow: true});
+    }
+    
+    // 如果当前窗口没有任何标签页，尝试获取任意窗口的任意标签页
+    if (!tabs || tabs.length === 0) {
+      console.log('当前窗口没有标签页，尝试获取任意窗口的标签页');
+      tabs = await chrome.tabs.query({});
+    }
+    
+    if (!tabs || tabs.length === 0) {
+      console.error('没有找到任何标签页');
+      // 发送错误结果到服务端
+      if (taskId) {
+        sendCrawlResult(taskId, { error: 'No tabs available to execute script' }, 'fail');
+      }
+      return;
+    }
+    
+    const tab = tabs[0];
+    
+    // 调试：检查content script是否已注入
+    console.log('准备向标签页发送消息:', {
+      tabId: tab.id,
+      url: tab.url,
+      title: tab.title,
+      status: tab.status
+    });
+    
+    // 检查是否是允许发送消息的页面
+    if (tab.url.startsWith('chrome://') || tab.url.startsWith('about:') || tab.url.startsWith('data:')) {
+      console.error('无法向内部页面发送消息:', tab.url);
+      if (taskId) {
+        sendCrawlResult(taskId, { error: 'Cannot execute script on internal pages' }, 'fail');
+      }
+      return;
+    }
     
     // 发送消息到content script执行脚本
-    chrome.tabs.sendMessage(tab.id, {
-      type: 'execute_crawl_script',
-      scriptId: scriptId,
-      scriptContent: scriptContent,
-      taskId: taskId
-    });
+    console.log('准备向标签页发送消息:', { tabId: tab.id, url: tab.url, title: tab.title });
+    
+    // 先检查content script是否已加载
+    try {
+      const result = await chrome.tabs.executeScript(tab.id, {
+        code: 'typeof window.crawlerAssistantLoaded !== "undefined" && window.crawlerAssistantLoaded'
+      });
+      
+      if (!result || result.length === 0 || !result[0]) {
+        console.warn('content script未加载到标签页:', tab.id);
+        // 尝试注入一次
+        await chrome.tabs.executeScript(tab.id, {
+          file: 'content.js'
+        });
+        
+        // 再次检查
+        const retryResult = await chrome.tabs.executeScript(tab.id, {
+          code: 'typeof window.crawlerAssistantLoaded !== "undefined" && window.crawlerAssistantLoaded'
+        });
+        
+        if (!retryResult || retryResult.length === 0 || !retryResult[0]) {
+          console.error('content script注入失败，无法执行脚本');
+          if (taskId) {
+            sendCrawlResult(taskId, { error: 'Content script not loaded in target tab' }, 'fail');
+          }
+          return;
+        }
+      }
+    } catch (checkError) {
+      console.warn('检查content script状态失败:', checkError.message);
+      // 继续尝试发送消息
+    }
+    
+    try {
+      chrome.tabs.sendMessage(tab.id, {
+        type: 'execute_crawl_script',
+        scriptId: scriptId,
+        scriptContent: scriptContent,
+        taskId: taskId
+      }, function(response) {
+        // 检查是否发送失败
+        if (chrome.runtime.lastError) {
+          console.error('发送消息失败:', chrome.runtime.lastError.message);
+          if (taskId) {
+            sendCrawlResult(taskId, { error: 'Failed to send message to tab: ' + chrome.runtime.lastError.message }, 'fail');
+          }
+        }
+      });
+    } catch (sendMessageError) {
+      console.error('发送消息异常:', sendMessageError);
+      if (taskId) {
+        sendCrawlResult(taskId, { error: sendMessageError.message }, 'fail');
+      }
+    }
   } catch (error) {
     console.error('执行脚本时出错:', error);
     
@@ -626,10 +762,55 @@ function checkDomainScriptMatch(url) {
           // 发送匹配到的脚本到content script
           chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
             if (tabs[0]) {
-              chrome.tabs.sendMessage(tabs[0].id, {
-                type: 'domain_script_matched',
-                matchedScripts: matchedScripts,
-                domain: hostname
+              const tab = tabs[0];
+                  
+              // 检查是否是允许发送消息的页面
+              if (tab.url.startsWith('chrome://') || tab.url.startsWith('about:') || tab.url.startsWith('data:')) {
+                console.log('无法向内部页面发送域名匹配消息:', tab.url);
+                return;
+              }
+                  
+              try {
+                chrome.tabs.sendMessage(tab.id, {
+                  type: 'domain_script_matched',
+                  matchedScripts: matchedScripts,
+                  domain: hostname
+                }, function(response) {
+                  // 检查是否发送失败
+                  if (chrome.runtime.lastError) {
+                    console.log('发送域名匹配消息失败:', chrome.runtime.lastError.message);
+                  }
+                });
+              } catch (error) {
+                console.log('发送域名匹配消息异常:', error);
+              }
+            } else {
+              // 如果没有活动标签页，尝试获取任意标签页
+              chrome.tabs.query({}, function(allTabs) {
+                if (allTabs && allTabs.length > 0) {
+                  const tab = allTabs[0];
+                      
+                  // 检查是否是允许发送消息的页面
+                  if (tab.url.startsWith('chrome://') || tab.url.startsWith('about:') || tab.url.startsWith('data:')) {
+                    console.log('无法向内部页面发送域名匹配消息:', tab.url);
+                    return;
+                  }
+                      
+                  try {
+                    chrome.tabs.sendMessage(tab.id, {
+                      type: 'domain_script_matched',
+                      matchedScripts: matchedScripts,
+                      domain: hostname
+                    }, function(response) {
+                      // 检查是否发送失败
+                      if (chrome.runtime.lastError) {
+                        console.log('发送域名匹配消息失败:', chrome.runtime.lastError.message);
+                      }
+                    });
+                  } catch (error) {
+                    console.log('发送域名匹配消息异常:', error);
+                  }
+                }
               });
             }
           });
