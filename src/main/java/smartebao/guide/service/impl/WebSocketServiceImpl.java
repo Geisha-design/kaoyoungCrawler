@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Comparator;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
@@ -42,8 +43,14 @@ public class WebSocketServiceImpl implements WebSocketService {
     public void updateClientStatus(String clientId, String status) {
         QueryWrapper<CrawlerClient> wrapper = new QueryWrapper<>();
         wrapper.eq("client_id", clientId);
-        CrawlerClient client = crawlerClientMapper.selectOne(wrapper);
-        if (client != null) {
+        List<CrawlerClient> clients = crawlerClientMapper.selectList(wrapper);
+        
+        if (clients != null && !clients.isEmpty()) {
+            // 使用最新的客户端记录（根据lastUpdateTime排序）
+            CrawlerClient client = clients.stream()
+                .max(Comparator.comparing(CrawlerClient::getLastUpdateTime))
+                .orElse(clients.get(0)); // 如果没有lastUpdateTime字段值，则使用第一个
+            
             client.setStatus(status);
             client.setLastUpdateTime(new Date());
             crawlerClientMapper.updateById(client);
@@ -58,8 +65,15 @@ public class WebSocketServiceImpl implements WebSocketService {
     public void updateClientIdleStatus(String clientId, Boolean idleStatus) {
         QueryWrapper<CrawlerClient> wrapper = new QueryWrapper<>();
         wrapper.eq("client_id", clientId);
-        CrawlerClient client = crawlerClientMapper.selectOne(wrapper);
-        if (client != null) {
+        wrapper.eq("status", "online");
+        List<CrawlerClient> clients = crawlerClientMapper.selectList(wrapper);
+        
+        if (clients != null && !clients.isEmpty()) {
+            // 使用最新的客户端记录（根据lastUpdateTime排序）
+            CrawlerClient client = clients.stream()
+                .max(Comparator.comparing(CrawlerClient::getLastUpdateTime))
+                .orElse(clients.get(0)); // 如果没有lastUpdateTime字段值，则使用第一个
+            
             client.setIdleStatus(idleStatus);
             client.setLastUpdateTime(new Date());
             crawlerClientMapper.updateById(client);
@@ -99,6 +113,7 @@ public class WebSocketServiceImpl implements WebSocketService {
     public void updateClientUrl(String clientId, String currentUrl) {
         QueryWrapper<CrawlerClient> wrapper = new QueryWrapper<>();
         wrapper.eq("client_id", clientId);
+        wrapper.eq("status", "online");
         CrawlerClient client = crawlerClientMapper.selectOne(wrapper);
         if (client != null) {
             client.setCurrentUrl(currentUrl);

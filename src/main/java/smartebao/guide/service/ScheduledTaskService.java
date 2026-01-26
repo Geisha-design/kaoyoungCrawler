@@ -83,6 +83,11 @@ public class ScheduledTaskService {
                 System.out.println("发送定时任务到客户端 " + task.getClientId() + ", 任务: " + task.getTaskKey());
             } else {
                 System.out.println("客户端 " + task.getClientId() + " 不在线或不健康，跳过定时任务 " + task.getTaskKey());
+                // 生成任务ID
+                String taskId = "scheduled_task_" + task.getTaskKey() + "_" + System.currentTimeMillis();
+
+                // 发送任务指令到客户端
+                webSocketService.sendTaskToSpecificClient(task.getClientId(), taskId, task.getScriptId(), task.getExecuteOnIdle());
             }
         } catch (Exception e) {
             System.err.println("执行定时任务时出错: " + e.getMessage());

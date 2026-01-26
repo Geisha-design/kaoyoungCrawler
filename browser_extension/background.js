@@ -362,7 +362,8 @@ function handleMessage(message) {
       handleScriptPush(message.payload.scripts);
       break;
       
-    case 'task_command':
+    // case 'task_command':
+    case 'execute_script':
       // 处理任务指令
       handleTaskCommand(message.payload);
       break;

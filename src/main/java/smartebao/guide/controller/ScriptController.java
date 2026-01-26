@@ -98,7 +98,7 @@ public class ScriptController {
             if (scripts.isEmpty()) {
                 return ResponseData.error("没有可用的脚本");
             }
-
+            System.out.println("客户端数量: " + CrawlerWebSocketHandler.getOnlineCount());
             // 获取所有在线客户端并下发脚本
             List<String> onlineClients = CrawlerWebSocketHandler.getOnlineCount() > 0 ? 
                 CrawlerWebSocketHandler.getSessionMap().keySet().stream().collect(Collectors.toList()) : 

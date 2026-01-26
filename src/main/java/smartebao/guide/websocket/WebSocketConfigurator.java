@@ -43,29 +43,36 @@ public class WebSocketConfigurator extends Configurator implements ApplicationCo
             
             for (String param : params) {
                 String[] keyValue = param.split("=");
-                if (keyValue.length == 2 && "token".equals(keyValue[0])) {
+                if (keyValue.length >= 2 && "token".equals(keyValue[0])) {
                     token = keyValue[1];
                     break;
                 }
             }
             
             if (token != null) {
+
+                System.out.println("WebSocket握手参数: " + queryString);
+                System.out.println(validateToken(token));
                 // 验证JWT令牌
                 if (validateToken(token)) {
                     // 验证通过，存储token
                     sec.getUserProperties().put("token", token);
                     sec.getUserProperties().put("token_valid", true);
+                    System.out.println("WebSocket握手认证成功: " + token.substring(0, Math.min(20, token.length())) + "...");
                 } else {
                     // 验证失败，标记为无效
                     sec.getUserProperties().put("token_valid", false);
+                    System.out.println("WebSocket握手认证失败: " + token.substring(0, Math.min(20, token.length())) + "...");
                 }
             } else {
                 // 没有提供token，标记为无效
                 sec.getUserProperties().put("token_valid", false);
+                System.out.println("WebSocket握手缺少token参数");
             }
         } else {
             // 没有查询参数，标记为无效
             sec.getUserProperties().put("token_valid", false);
+            System.out.println("WebSocket握手没有查询参数");
         }
     }
     
@@ -75,6 +82,7 @@ public class WebSocketConfigurator extends Configurator implements ApplicationCo
             try {
                 jwtUtil = applicationContext.getBean(JwtUtil.class);
             } catch (BeansException e) {
+                System.err.println("无法获取JwtUtil Bean: " + e.getMessage());
                 // 如果无法获取bean，返回false表示验证失败
                 return false;
             }
@@ -83,8 +91,19 @@ public class WebSocketConfigurator extends Configurator implements ApplicationCo
         if (jwtUtil != null) {
             return jwtUtil.validateToken(token);
         } else {
-            // 如果JwtUtil不可用，返回false表示验证失败
-            return false;
+            // 如果JwtUtil不可用，尝试手动初始化
+            if (applicationContext != null) {
+                try {
+                    jwtUtil = applicationContext.getBean(JwtUtil.class);
+                    return jwtUtil.validateToken(token);
+                } catch (BeansException e) {
+                    System.err.println("手动获取JwtUtil Bean失败: " + e.getMessage());
+                    return false;
+                }
+            } else {
+                System.err.println("应用上下文不可用");
+                return false;
+            }
         }
     }
     

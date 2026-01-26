@@ -1,3 +1,139 @@
+# 爬虫助手系统 - 客户端脚本执行功能说明文档
+
+## 概述
+
+本文档详细说明了爬虫助手系统新增的客户端脚本执行功能，允许管理员指定特定客户端执行脚本库中的脚本。
+
+## 功能特性
+
+### 1. 指定客户端执行脚本
+- 支持指定特定客户端ID执行脚本库中的脚本
+- 支持两种API调用方式：
+  - POST `/api/client-script/execute` (请求体传递参数)
+  - POST `/api/client-script/clients/{clientId}/scripts/{scriptId}/execute` (路径参数传递)
+
+### 2. 脚本库管理
+- 支持从脚本库中选择脚本执行
+- 自动验证脚本存在性
+
+### 3. 客户端状态检查
+- 执行前自动检查目标客户端是否在线
+- 返回详细的执行结果和任务ID
+
+## API接口说明
+
+### 1. 指定客户端执行脚本 (请求体方式)
+
+- **接口地址**: `POST /api/client-script/execute`
+- **功能描述**: 指定客户端ID和脚本ID，执行脚本库中的脚本
+- **请求参数**:
+  ```json
+  {
+    "clientId": "客户端唯一标识",
+    "scriptId": "脚本库中的脚本ID"
+  }
+  ```
+- **成功响应**:
+  ```json
+  {
+    "code": 200,
+    "message": "脚本已发送至指定客户端执行",
+    "data": {
+      "clientId": "客户端ID",
+      "scriptId": "脚本ID",
+      "scriptName": "脚本名称",
+      "taskId": "任务ID"
+    }
+  }
+  ```
+- **错误响应**:
+  - 客户端不在线: `{ "code": 400, "message": "指定的客户端不在线" }`
+  - 脚本不存在: `{ "code": 400, "message": "脚本不存在" }`
+
+### 2. 指定客户端执行脚本 (路径参数方式)
+
+- **接口地址**: `POST /api/client-script/clients/{clientId}/scripts/{scriptId}/execute`
+- **功能描述**: 通过路径参数指定客户端ID和脚本ID，执行脚本库中的脚本
+- **路径参数**:
+  - `{clientId}`: 客户端唯一标识
+  - `{scriptId}`: 脚本库中的脚本ID
+- **成功响应**: 同上
+
+### 3. 获取所有可用脚本
+
+- **接口地址**: `GET /api/client-script/scripts`
+- **功能描述**: 获取脚本库中所有可用的脚本
+- **响应**: 返回所有脚本对象的数组
+
+### 4. 检查客户端状态
+
+- **接口地址**: `GET /api/client-script/clients/{clientId}/status`
+- **功能描述**: 检查指定客户端是否在线
+- **路径参数**: `{clientId}` - 客户端唯一标识
+- **响应**:
+  ```json
+  {
+    "code": 200,
+    "message": "客户端在线",
+    "data": {
+      "clientId": "客户端ID",
+      "isConnected": true
+    }
+  }
+  ```
+
+## WebSocket消息协议
+
+### 脚本执行命令消息格式
+
+``json
+{
+  "type": "execute_script",
+  "payload": {
+    "taskId": "任务ID",
+    "scriptId": "脚本ID",
+    "scriptContent": "脚本内容"
+  },
+  "clientId": "客户端ID",
+  "timestamp": 时间戳
+}
+```
+
+## 技术实现
+
+### 1. 控制器层
+- 新增 `ClientScriptController` 控制器
+- 实现多种方式的客户端脚本执行接口
+
+### 2. 服务层
+- 利用现有的 `WebSocketService` 和 `CrawlerScriptService`
+- 通过 `CrawlerWebSocketHandler` 发送执行命令
+
+### 3. WebSocket通信
+- 使用 `sendExecuteScriptCommand` 方法向指定客户端发送脚本执行命令
+- 客户端收到命令后执行相应脚本
+
+## 安全考虑
+
+- 需要管理员权限才能执行此功能
+- 验证客户端和脚本的存在性
+- 防止无效请求造成系统异常
+
+## 使用场景
+
+1. **定向任务分配**: 需要特定客户端执行特定脚本任务
+2. **调试与测试**: 手动触发特定客户端执行脚本进行测试
+3. **运维管理**: 管理员可远程控制客户端执行特定任务
+4. **负载均衡**: 根据客户端状态分配执行任务
+
+## 附录
+
+### 与现有功能的关系
+
+- 与 `/api/admin` 管理端接口配合使用
+- 共享 WebSocket 连接管理和脚本库功能
+- 与现有的客户端管理和脚本管理功能无缝集成
+
 # 爬虫助手系统 - 终极说明文档
 
 ## 项目概述

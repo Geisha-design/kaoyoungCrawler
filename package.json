@@ -1,0 +1,24 @@
+{
+  "name": "kaoyoungcrawler",
+  "version": "1.0.0",
+  "description": "基于Spring Boot的爬虫助手系统后端，支持浏览器插件客户端通过WebSocket进行实时通信，实现JS爬取脚本的全局批量下发与指定客户端定向下发。",
+  "main": "test_websocket_with_token.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Geisha-design/kaoyoungCrawler.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Geisha-design/kaoyoungCrawler/issues"
+  },
+  "homepage": "https://github.com/Geisha-design/kaoyoungCrawler#readme",
+  "dependencies": {
+    "ws": "^8.19.0"
+  }
+}

@@ -11,6 +11,7 @@ import smartebao.guide.service.CrawlerClientService;
 import smartebao.guide.service.CrawlerScriptService;
 import smartebao.guide.service.WebSocketService;
 import smartebao.guide.utils.ResponseData;
+import smartebao.guide.websocket.CrawlerWebSocketHandler;
 
 import java.util.List;
 import java.util.Map;
@@ -206,6 +207,41 @@ public class AdminController {
             return ResponseData.success("脚本已发送至客户端执行", clientId);
         } catch (Exception e) {
             return ResponseData.error("发送脚本到客户端失败: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 指定客户端执行脚本库中的脚本
+     */
+    @Operation(summary = "指定客户端执行脚本库中的脚本", description = "指定客户端ID和脚本ID，执行脚本库中的脚本")
+    @PostMapping("/clients/{clientId}/execute-script-by-id")
+    public ResponseData executeScriptById(@Parameter(description = "客户端ID") @PathVariable String clientId, @RequestBody Map<String, String> params) {
+        try {
+            String scriptId = params.get("scriptId");
+            
+            // 验证客户端是否在线
+            if (!webSocketService.isClientConnected(clientId)) {
+                return ResponseData.error("指定的客户端不在线");
+            }
+            
+            // 验证脚本是否存在
+            CrawlerScript script = scriptService.getById(scriptId);
+            if (script == null) {
+                return ResponseData.error("脚本不存在");
+            }
+            
+            // 通过WebSocket处理器向指定客户端发送执行脚本命令
+            CrawlerWebSocketHandler handler = new CrawlerWebSocketHandler();
+            handler.sendExecuteScriptCommand(clientId, "manual_task_" + System.currentTimeMillis(), scriptId, script.getContent());
+            
+            Map<String, Object> result = new java.util.HashMap<>();
+            result.put("clientId", clientId);
+            result.put("scriptId", scriptId);
+            result.put("scriptName", script.getDescription());
+            
+            return ResponseData.success("脚本已发送至指定客户端执行", result);
+        } catch (Exception e) {
+            return ResponseData.error("执行脚本失败: " + e.getMessage());
         }
     }
 }

@@ -1,20 +1,8 @@
-// 测试WebSocket连接
+// 测试WebSocket连接 - 使用动态获取的令牌
 const WebSocket = require('ws');
 
-// 注意：请先通过登录接口获取有效的JWT token
-// 示例：
-// curl -X POST http://localhost:8090/smarteCrawler/api/login \
-//   -H "Content-Type: application/json" \
-//   -d '{"username":"admin","password":"123456"}'
-
-// 替换为你从登录接口获取的有效token
-const token = process.env.WS_TOKEN || 'YOUR_VALID_JWT_TOKEN_HERE';
-
-if (!token || token === 'YOUR_VALID_JWT_TOKEN_HERE') {
-  console.log('❌ 请先获取有效的JWT token并替换代码中的占位符');
-  console.log('💡 获取token的方法：运行登录接口后，将返回的token替换上面的占位符');
-  process.exit(1);
-}
+// 从登录接口获取的token
+const token = 'eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhZG1pbiIsImlhdCI6MTc2OTQxMTQ3MywiZXhwIjoxNzY5NDE4NjczfQ.B-DTHwIiRl5sWewW0iOpAu5bUV0YQE1Ey6kzrxak4YvyfRr_FKSNq0E-tF1qWbly2Sm8OMSe4ZGcbF6Oqtvfkg';
 
 console.log('尝试连接WebSocket...');
 

@@ -79,14 +79,31 @@ public class CrawlerWebSocketHandler {
                 // 发送403错误码并关闭连接
                 CloseReason closeReason = new CloseReason(CloseReason.CloseCodes.VIOLATED_POLICY, "Authentication failed");
                 session.close(closeReason);
-                System.out.println("WebSocket连接认证失败，已关闭连接");
+                System.out.println("WebSocket连接认证失败，已关闭连接 - token有效: " + tokenValid + ", token存在: " + (token != null));
                 return;
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
         
-        System.out.println("WebSocket连接建立成功");
+        System.out.println("WebSocket连接建立成功 - token: " + (token != null ? token.substring(0, Math.min(20, token.length())) + "..." : "null"));
+        
+        // 从token中提取用户名，用于生成或查找clientId
+        String username = jwtUtil.getUsernameFromToken(token);
+        String clientId = generateOrGetClientId(username); // 根据用户名生成或获取已存在的clientId
+        
+        // 发送认证成功消息，通知客户端可以进行注册
+        AuthSuccessMessage authMsg = new AuthSuccessMessage();
+        authMsg.setType("auth_success");
+        authMsg.setPayload(new AuthSuccessPayload(clientId));
+        authMsg.setClientId(clientId);
+        authMsg.setTimestamp(System.currentTimeMillis());
+        sendMessage(session, JSON.toJSONString(authMsg));
+        
+        // 临时将clientId存储在session中，等待register消息
+        session.getUserProperties().put("clientId", clientId);
+        
+        System.out.println("已发送认证成功消息，等待客户端注册 - clientId: " + clientId + ", username: " + username);
     }
 
     /**
@@ -189,14 +206,6 @@ public class CrawlerWebSocketHandler {
                 client.setIdleStatus(idleStatus != null ? idleStatus : client.getIdleStatus()); // 更新空闲状态
                 crawlerClientMapper.updateById(client);
             }
-
-            // 发送认证成功消息
-            AuthSuccessMessage authMsg = new AuthSuccessMessage();
-            authMsg.setType("auth_success");
-            authMsg.setPayload(new AuthSuccessPayload(clientId));
-            authMsg.setClientId(clientId);
-            authMsg.setTimestamp(System.currentTimeMillis());
-            sendMessage(session, JSON.toJSONString(authMsg));
 
             // 存储会话
             sessionMap.put(clientId, session);
@@ -716,5 +725,25 @@ public class CrawlerWebSocketHandler {
         public void setScriptId(String scriptId) { this.scriptId = scriptId; }
         public String getScriptContent() { return scriptContent; }
         public void setScriptContent(String scriptContent) { this.scriptContent = scriptContent; }
+    }
+    
+    /**
+     * 根据用户名生成或获取已存在的clientId
+     */
+    private String generateOrGetClientId(String username) {
+        // 尝试从数据库中查找已存在的客户端ID
+        smartebao.guide.entity.CrawlerClient existingClient = crawlerClientMapper.selectOne(
+            new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<smartebao.guide.entity.CrawlerClient>()
+                .eq("username", username)
+                .last("LIMIT 1") // 只取一个结果
+        );
+        
+        if (existingClient != null) {
+            return existingClient.getClientId(); // 返回已存在的clientId
+        } else {
+            // 生成新的clientId
+            String newClientId = "client_" + System.currentTimeMillis() + "_" + Math.abs(username.hashCode());
+            return newClientId;
+        }
     }
 }
