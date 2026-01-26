@@ -210,6 +210,34 @@ document.addEventListener('DOMContentLoaded', function() {
   const logoutBtn = document.getElementById('logoutBtn');
   logoutBtn.addEventListener('click', async function() {
     try {
+      // 获取客户端ID
+      const clientInfo = await window.getClientId();
+      const extensionId = clientInfo.clientId;
+      
+      // 获取JWT令牌
+      const storedData = await chrome.storage.local.get(['jwtToken']);
+      
+      // 调用后端退出登录接口
+      if (storedData.jwtToken) {
+        try {
+          const response = await fetch('http://localhost:8090/smarteCrawler/api/logout', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${storedData.jwtToken}`
+            },
+            body: JSON.stringify({
+              clientId: extensionId
+            })
+          });
+          
+          const result = await response.json();
+          console.log('后端退出登录结果:', result);
+        } catch (error) {
+          console.error('调用后端退出登录接口失败:', error);
+        }
+      }
+      
       // 通知background脚本关闭WebSocket连接
       chrome.runtime.sendMessage({ type: 'logout' }, function(response) {
         if (chrome.runtime.lastError) {

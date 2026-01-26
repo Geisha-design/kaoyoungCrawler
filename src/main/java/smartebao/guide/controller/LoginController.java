@@ -135,4 +135,48 @@ public class LoginController {
 
         return ResponseEntity.ok(response);
     }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Map<String, Object>> logout(@RequestHeader("Authorization") String token, @RequestBody Map<String, String> requestData) {
+        try {
+            // 验证JWT令牌
+            String jwtToken = token.substring(7); // 移除"Bearer "前缀
+            String username = jwtUtil.getUsernameFromToken(jwtToken);
+            
+            if (username == null || !jwtUtil.validateToken(jwtToken)) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("code", 401);
+                response.put("message", "无效的令牌");
+                return ResponseEntity.status(401).body(response);
+            }
+            
+            // 获取客户端ID
+            String clientId = requestData.get("clientId");
+            
+            if (clientId != null && !clientId.isEmpty()) {
+                // 更新客户端状态为离线
+                QueryWrapper<CrawlerClient> clientWrapper = new QueryWrapper<>();
+                clientWrapper.eq("client_id", clientId);
+                CrawlerClient existingClient = clientMapper.selectOne(clientWrapper);
+                
+                if (existingClient != null) {
+                    existingClient.setStatus("offline");
+                    existingClient.setLastUpdateTime(new Date());
+                    clientMapper.updateById(existingClient);
+                }
+            }
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("code", 200);
+            response.put("message", "退出登录成功");
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("code", 500);
+            response.put("message", "退出登录失败: " + e.getMessage());
+            
+            return ResponseEntity.status(500).body(response);
+        }
+    }
 }
