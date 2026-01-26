@@ -169,13 +169,6 @@ public class CrawlerWebSocketHandler {
             String supportTaskTypes = payload.getSupportTaskTypes();
             Boolean idleStatus = payload.getIdleStatus(); // 获取初始空闲状态
 
-            System.out.println("收到客户端注册请求: " + clientId);
-            System.out.println("用户名: " + username);
-            System.out.println("当前URL: " + currentUrl);
-            System.out.println("支持的任务类型: " + supportTaskTypes);
-            System.out.println("空闲状态: " + idleStatus);
-            System.out.println("会话属性: " + session.getUserProperties());
-
             // 保存或更新客户端信息
             smartebao.guide.entity.CrawlerClient client = crawlerClientMapper.selectOne(
                 new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<smartebao.guide.entity.CrawlerClient>()
@@ -470,6 +463,8 @@ public class CrawlerWebSocketHandler {
      * 获取指定客户端的会话
      */
     public static Session getClientSession(String clientId) {
+        System.out.println("获取客户端 " + clientId + " 的会话");
+        System.out.println("会话映射: " + sessionMap);
         return sessionMap.get(clientId);
     }
 

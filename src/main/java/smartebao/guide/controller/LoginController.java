@@ -49,11 +49,13 @@ public class LoginController {
                 // 尝试查找现有的客户端记录
                 QueryWrapper<CrawlerClient> clientWrapper = new QueryWrapper<>();
                 clientWrapper.eq("client_id", clientId);
+                clientWrapper.eq("status", "offline");
                 CrawlerClient existingClient = clientMapper.selectOne(clientWrapper);
 
                 if (existingClient != null) {
                     // 更新现有客户端记录
                     existingClient.setUsername(username);
+                    existingClient.setStatus("online");
                     existingClient.setLastUpdateTime(new Date());
                     clientMapper.updateById(existingClient);
                 } else {
@@ -115,13 +117,13 @@ public class LoginController {
         // 保存用户到数据库
         userMapper.insert(newUser);
 
-        // 如果提供了clientId，在crawler_client表中创建记录
+        // 如果提供了clientId，在crawler_client表中创建记录，但是在注册的时候应该是未登陆在线的状态
         if (clientId != null && !clientId.isEmpty()) {
             CrawlerClient newClient = new CrawlerClient();
             newClient.setClientId(clientId);
             newClient.setUsername(username);
             newClient.setConnectTime(new Date());
-            newClient.setStatus("online");
+            newClient.setStatus("offline");
             newClient.setLastUpdateTime(new Date());
             newClient.setIdleStatus(false); // 默认非空闲状态
             clientMapper.insert(newClient);

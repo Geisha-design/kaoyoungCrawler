@@ -12,6 +12,7 @@ import smartebao.guide.mapper.CrawlerScriptMapper;
 import smartebao.guide.service.ClientCacheService;
 import smartebao.guide.service.WebSocketService;
 import smartebao.guide.utils.ResponseData;
+import smartebao.guide.websocket.CrawlerWebSocketHandler;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -127,15 +128,50 @@ public class WebSocketServiceImpl implements WebSocketService {
 
     @Override
     public void sendMessageToClient(String clientId, String message) {
-        // 实际的WebSocket消息发送逻辑应在WebSocket处理器中处理
-        // 这里只是示例，实际实现需要访问WebSocket会话
-        System.out.println("Sending message to client " + clientId + ": " + message);
+        // 检查客户端ID是否为空
+        if (clientId == null || clientId.trim().isEmpty()) {
+            System.err.println("客户端ID为空，无法发送消息: " + message);
+            return;
+        }
+        
+        // 通过CrawlerWebSocketHandler获取客户端会话并发送消息
+        javax.websocket.Session session = CrawlerWebSocketHandler.getClientSession(clientId);
+        if (session != null && session.isOpen()) {
+            try {
+                session.getBasicRemote().sendText(message);
+                System.out.println("成功发送消息到客户端 " + clientId + ": " + message);
+            } catch (Exception e) {
+                System.err.println("发送消息到客户端 " + clientId + " 失败: " + e.getMessage());
+                e.printStackTrace();
+            }
+        } else {
+            System.err.println("客户端 " + clientId + " 不在线或会话已关闭，无法发送消息: " + message);
+            // 输出当前所有在线客户端的ID用于调试
+            Map<String, javax.websocket.Session> allSessions = CrawlerWebSocketHandler.getSessionMap();
+            if (allSessions.isEmpty()) {
+                System.out.println("当前没有在线的客户端");
+            } else {
+                System.out.println("当前在线客户端列表: " + allSessions.keySet());
+            }
+        }
     }
 
     @Override
     public void broadcastMessage(String message) {
-        // 广播消息给所有连接的客户端
-        System.out.println("Broadcasting message: " + message);
+        // 从CrawlerWebSocketHandler获取所有会话并广播消息
+        Map<String, javax.websocket.Session> sessions = CrawlerWebSocketHandler.getSessionMap();
+        for (Map.Entry<String, javax.websocket.Session> entry : sessions.entrySet()) {
+            String clientId = entry.getKey();
+            javax.websocket.Session session = entry.getValue();
+            if (session != null && session.isOpen()) {
+                try {
+                    session.getBasicRemote().sendText(message);
+                } catch (Exception e) {
+                    System.err.println("广播消息到客户端 " + clientId + " 失败: " + e.getMessage());
+                }
+            }
+        }
+        System.out.println("广播消息完成: " + message);
     }
 
     @Override
@@ -182,7 +218,14 @@ public class WebSocketServiceImpl implements WebSocketService {
 
     @Override
     public boolean isClientConnected(String clientId) {
-        return clientSessions.containsKey(clientId) && isClientHealthy(clientId);
+        // 检查WebSocket会话是否在线
+        boolean isWebSocketConnected = CrawlerWebSocketHandler.isClientOnline(clientId);
+        
+        // 同时检查数据库状态
+        boolean isDatabaseOnline = isClientOnlineInDatabase(clientId);
+        
+        // 只有当WebSocket连接和数据库状态都表明客户端在线时才认为客户端已连接
+        return isWebSocketConnected && isDatabaseOnline;
     }
 
     @Override
@@ -224,5 +267,11 @@ public class WebSocketServiceImpl implements WebSocketService {
     public ResponseData getAllClientStatus() {
         List<CrawlerClient> allClients = crawlerClientMapper.selectList(null);
         return ResponseData.success("获取客户端状态成功", allClients);
+    }
+    
+    private boolean isClientOnlineInDatabase(String clientId) {
+        QueryWrapper<CrawlerClient> wrapper = new QueryWrapper<>();
+        wrapper.eq("client_id", clientId).eq("status", "online");
+        return crawlerClientMapper.selectCount(wrapper) > 0;
     }
 }
