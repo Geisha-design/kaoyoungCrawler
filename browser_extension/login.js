@@ -45,8 +45,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     try {
-      // 获取浏览器扩展ID作为clientId
-      const extensionId = chrome.runtime.id;
+      // 获取浏览器指纹生成的客户端ID
+      const clientInfo = await window.getClientId();
+      const extensionId = clientInfo.clientId;
       
       // 调用后端登录接口
       const response = await fetch('http://localhost:8090/smarteCrawler/api/login', {
@@ -57,7 +58,7 @@ document.addEventListener('DOMContentLoaded', function() {
         body: JSON.stringify({
           username: username,
           password: password,
-          clientId: extensionId  // 发送浏览器扩展ID作为客户端ID
+          clientId: extensionId  // 发送浏览器指纹生成的客户端ID
         })
       });
       
@@ -67,8 +68,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // 保存JWT令牌到Chrome存储
         chrome.storage.local.set({
           jwtToken: result.data.token,
-          username: username,
-          clientId: extensionId  // 同时保存客户端ID
+          username: username
+          // 客户端ID已经存储在background中
         }, function() {
           statusDiv.textContent = '登录成功，正在连接WebSocket...';
           statusDiv.className = 'connected';
@@ -115,8 +116,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     try {
-      // 获取浏览器扩展ID作为clientId
-      const extensionId = chrome.runtime.id;
+      // 获取浏览器指纹生成的客户端ID
+      const clientInfo = await window.getClientId();
+      const extensionId = clientInfo.clientId;
       
       // 调用后端注册接口
       const response = await fetch('http://localhost:8090/smarteCrawler/api/register', {
@@ -127,7 +129,7 @@ document.addEventListener('DOMContentLoaded', function() {
         body: JSON.stringify({
           username: username,
           password: password,
-          clientId: extensionId  // 发送浏览器扩展ID作为客户端ID
+          clientId: extensionId  // 发送浏览器指纹生成的客户端ID
         })
       });
       
@@ -214,8 +216,8 @@ document.addEventListener('DOMContentLoaded', function() {
           console.error('发送退出消息失败:', chrome.runtime.lastError);
         }
         
-        // 清除本地存储的JWT令牌
-        chrome.storage.local.remove(['jwtToken', 'username', 'clientId'], function() {
+        // 清除本地存储的JWT令牌，但保留clientId因为它代表客户端的唯一标识
+        chrome.storage.local.remove(['jwtToken', 'username'], function() {
           // 重置界面状态
           loginForm.style.display = 'block';
           connectedPage.style.display = 'none';
@@ -258,7 +260,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // 从本地存储获取用户名和当前URL
     chrome.storage.local.get(['username', 'currentUrl'], function(result) {
       // 更新显示信息
-      clientIdDisplay.textContent = status.clientId || chrome.runtime.id || '-';
+      clientIdDisplay.textContent = status.clientId || 'N/A';
       usernameDisplay.textContent = result.username || status.username || '-';
       currentUrlDisplay.textContent = result.currentUrl ? 
         new URL(result.currentUrl).hostname : (status.activeTabUrl ? 

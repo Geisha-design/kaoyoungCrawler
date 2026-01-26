@@ -1,7 +1,7 @@
 // 全局变量
 let ws = null;
 let isConnected = false;
-let clientId = chrome.runtime.id; // 使用浏览器扩展的唯一ID作为默认clientId
+let clientId = null; // 客户端唯一ID，通过浏览器指纹生成
 let jwtToken = null;
 let username = null;
 let cachedScripts = {}; // 存储缓存的脚本
@@ -14,10 +14,54 @@ let heartbeatInterval = null; // 心跳定时器
 // 页面脚本缓存
 const pageScriptCache = new Map();
 
+// 生成浏览器指纹的函数
+function generateBrowserFingerprint() {
+  // 使用runtime信息和时间戳生成ID
+  const runtimeId = chrome.runtime.id || Math.random().toString(36).substring(2, 15);
+  
+  // 获取一些运行时环境信息作为指纹基础
+  try {
+    // 尝试获取一些环境信息作为指纹基础
+    const timestamp = Date.now().toString();
+    const randomPart = Math.random().toString(36).substring(2, 10);
+    
+    // 创建一个组合字符串
+    const fingerprintBase = `${runtimeId}_${timestamp}_${randomPart}`;
+    
+    // 生成哈希值
+    let hash = 0;
+    for (let i = 0; i < fingerprintBase.length; i++) {
+      const char = fingerprintBase.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // 转换为32位整数
+    }
+    
+    return `client_${Math.abs(hash).toString(36)}_${Date.now().toString(36)}`;
+  } catch (e) {
+    // 如果出现错误，使用默认方法
+    return `client_${runtimeId}_${Date.now().toString(36)}`;
+  }
+}
+
+// 初始化客户端ID
+async function initializeClientId() {
+  const result = await chrome.storage.local.get(['clientId']);
+  if (result.clientId) {
+    clientId = result.clientId;
+  } else {
+    clientId = generateBrowserFingerprint();
+    await chrome.storage.local.set({ clientId });
+  }
+  console.log('客户端ID:', clientId);
+}
+
 // 初始化
 chrome.runtime.onInstalled.addListener(() => {
   console.log('爬虫助手扩展已安装');
 });
+
+// 在扩展加载时初始化客户端ID
+initializeClientId();
 
 // 监听来自popup的消息
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -49,7 +93,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   } else if (message.type === 'get_client_id') {
     // 返回客户端唯一标识
     sendResponse({ 
-      clientId: chrome.runtime.id,
+      clientId: clientId,
       success: true 
     });
   } else if (message.type === 'get_scheduled_tasks') {
@@ -176,8 +220,8 @@ function disconnectWebSocket() {
   // 重置连接状态
   isConnected = false;
   jwtToken = null;
-  clientId = null;
   username = null;
+  // 注意：不将clientId设为null，而是保留它以便下次连接时使用
   
   // 更新图标状态
   updateIcon('disconnected');
@@ -266,6 +310,13 @@ function sendHeartbeat() {
     return;
   }
   
+  // 确保clientId存在
+  if (!clientId) {
+    console.error('客户端ID未初始化，无法发送心跳');
+    stopHeartbeat();
+    return;
+  }
+  
   const heartbeatMessage = {
     type: 'heartbeat',
     payload: {
@@ -289,6 +340,7 @@ function handleMessage(message) {
   
   switch (message.type) {
     case 'auth_success':
+      // 服务器分配的clientId可能与本地不同，需要更新
       clientId = message.payload.clientId;
       // 如果服务器在认证成功时提供了用户名信息，也要更新
       if (message.payload.username) {
@@ -299,6 +351,7 @@ function handleMessage(message) {
         clientId: clientId,
         username: username // 同时保存用户名到本地存储
       });
+      console.log('认证成功，客户端ID:', clientId);
       // 发送注册消息
       sendRegisterMessage();
       break;
@@ -343,6 +396,12 @@ function handleMessage(message) {
 function sendPong(requestId) {
   if (!ws || ws.readyState !== WebSocket.OPEN) {
     console.error('WebSocket未连接，无法发送Pong回应');
+    return;
+  }
+  
+  // 确保clientId存在
+  if (!clientId) {
+    console.error('客户端ID未初始化，无法发送Pong回应');
     return;
   }
   
@@ -509,6 +568,12 @@ function sendCrawlResult(taskId, crawlData, crawlStatus, errorMessage = null) {
     return;
   }
   
+  // 确保clientId存在
+  if (!clientId) {
+    console.error('客户端ID未初始化，无法发送爬取结果');
+    return;
+  }
+  
   const resultMessage = {
     type: 'crawl_result',
     payload: {
@@ -587,6 +652,12 @@ function notifyIdleStatusToBackend(isIdle) {
     return;
   }
   
+  // 确保clientId存在
+  if (!clientId) {
+    console.error('客户端ID未初始化，无法发送空闲状态更新');
+    return;
+  }
+  
   const idleStatusMessage = {
     type: 'idle_status_update',
     payload: {
@@ -617,16 +688,16 @@ function updateIcon(status) {
 }
 
 // 初始化时尝试从存储中恢复JWT令牌
-chrome.storage.local.get(['jwtToken', 'username', 'clientId'], function(result) {
+chrome.storage.local.get(['jwtToken', 'username', 'clientId'], async function(result) {
   if (result.jwtToken) {
     jwtToken = result.jwtToken;
     username = result.username;
-    // 如果本地存储中有clientId则使用，否则使用扩展ID
-    clientId = result.clientId || chrome.runtime.id;
+    // 确保客户端ID已被初始化
+    await initializeClientId();
     connectWebSocket();
   } else {
-    // 即使没有JWT令牌，也要确保clientId被设置
-    clientId = chrome.runtime.id;
+    // 即使没有JWT令牌，也要确保客户端ID被初始化
+    await initializeClientId();
   }
 });
 
