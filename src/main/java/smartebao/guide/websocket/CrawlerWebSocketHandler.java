@@ -190,28 +190,12 @@ public class CrawlerWebSocketHandler {
             String supportTaskTypes = payload.getSupportTaskTypes();
             Boolean idleStatus = payload.getIdleStatus(); // 获取初始空闲状态
 
-            // 保存或更新客户端信息
+            // 保存或更新客户端信息 注释掉 在登陆和登出接口即可
             smartebao.guide.entity.CrawlerClient client = crawlerClientMapper.selectOne(
                 new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<smartebao.guide.entity.CrawlerClient>()
                     .eq("client_id", clientId)
                         .eq("username",username)
                         .eq("status","online"));
-            if (client == null) {
-                client = new smartebao.guide.entity.CrawlerClient();
-                client.setClientId(clientId);
-                client.setUsername(username);
-                client.setConnectTime(new Date());
-                client.setStatus("online");
-                client.setIdleStatus(idleStatus != null ? idleStatus : false); // 设置初始空闲状态
-                crawlerClientMapper.insert(client);
-            } else {
-                client.setCurrentUrl(currentUrl);
-                client.setSupportTaskTypes(supportTaskTypes);
-                client.setStatus("online");
-                client.setLastUpdateTime(new Date());
-                client.setIdleStatus(idleStatus != null ? idleStatus : client.getIdleStatus()); // 更新空闲状态
-                crawlerClientMapper.updateById(client);
-            }
 
             // 存储会话
             sessionMap.put(clientId, session);
