@@ -97,16 +97,15 @@ async function generateBrowserFingerprint() {
       hash = hash & hash; // 转换为32位整数
     }
     
-    return `client_fp_${Math.abs(hash).toString(36)}_${Date.now().toString(36)}`;
+    return `client_fp_${Math.abs(hash).toString(36)}`;
   } catch (e) {
     console.error('生成浏览器指纹时出错:', e);
     // 回退到原始方法
     const runtimeId = chrome.runtime.id || Math.random().toString(36).substring(2, 15);
-    const timestamp = Date.now().toString();
     const randomPart = Math.random().toString(36).substring(2, 10);
     
     // 创建一个组合字符串
-    const fingerprintBase = `${runtimeId}_${timestamp}_${randomPart}`;
+    const fingerprintBase = `${runtimeId}_${randomPart}`;
     
     // 生成哈希值
     let hash = 0;
@@ -116,7 +115,7 @@ async function generateBrowserFingerprint() {
       hash = hash & hash; // 转换为32位整数
     }
     
-    return `client_${Math.abs(hash).toString(36)}_${Date.now().toString(36)}`;
+    return `client_${Math.abs(hash).toString(36)}`;
   }
 }
 
@@ -452,13 +451,13 @@ function handleMessage(message) {
   
   switch (message.type) {
     case 'auth_success':
-      // 服务器分配的clientId可能与本地不同，需要更新
-      clientId = message.payload.clientId;
+      // 不更新clientId，保持与登录API使用的ID一致
+      // 服务器分配的clientId可能与本地不同，但我们使用本地生成的ID
       // 如果服务器在认证成功时提供了用户名信息，也要更新
       if (message.payload.username) {
         username = message.payload.username;
       }
-      // 保存clientId到本地存储
+      // 保存本地生成的clientId到本地存储
       chrome.storage.local.set({ 
         clientId: clientId,
         username: username // 同时保存用户名到本地存储

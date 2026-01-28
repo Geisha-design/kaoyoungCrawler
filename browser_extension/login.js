@@ -77,16 +77,15 @@ async function generateBrowserFingerprint() {
       hash = hash & hash; // 转换为32位整数
     }
     
-    return `client_fp_${Math.abs(hash).toString(36)}_${Date.now().toString(36)}`;
+    return `client_fp_${Math.abs(hash).toString(36)}`;
   } catch (e) {
     console.error('生成浏览器指纹时出错:', e);
     // 回退到原始方法
     const runtimeId = chrome.runtime.id || Math.random().toString(36).substring(2, 15);
-    const timestamp = Date.now().toString();
     const randomPart = Math.random().toString(36).substring(2, 10);
     
     // 创建一个组合字符串
-    const fingerprintBase = `${runtimeId}_${timestamp}_${randomPart}`;
+    const fingerprintBase = `${runtimeId}_${randomPart}`;
     
     // 生成哈希值
     let hash = 0;
@@ -96,7 +95,7 @@ async function generateBrowserFingerprint() {
       hash = hash & hash; // 转换为32位整数
     }
     
-    return `client_${Math.abs(hash).toString(36)}_${Date.now().toString(36)}`;
+    return `client_${Math.abs(hash).toString(36)}`;
   }
 }
 
