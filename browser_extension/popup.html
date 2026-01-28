@@ -4,73 +4,154 @@
   <meta charset="UTF-8">
   <style>
     body {
-      width: 320px;
+      width: 350px;
       padding: 20px;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+      font-family: 'SimSun', 'Times New Roman', serif;
+      background: linear-gradient(135deg, #1e1e2f, #2d2d4a, #1e1e2f);
       color: #e0e0ff;
       margin: 0;
-      border-radius: 10px;
-      box-shadow: 0 0 20px rgba(0, 195, 255, 0.5);
+      border-radius: 15px;
+      box-shadow: 0 0 25px rgba(139, 69, 19, 0.6);
       backdrop-filter: blur(10px);
-      min-height: 300px;
+      min-height: 350px;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    /* 古典花纹边框 */
+    body::before {
+      content: "";
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      right: 10px;
+      bottom: 10px;
+      border: 2px solid rgba(210, 180, 140, 0.4);
+      pointer-events: none;
+      border-radius: 10px;
+    }
+    
+    /* 古典装饰角 */
+    .decoration-corner {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      color: rgba(210, 180, 140, 0.6);
+      font-size: 30px;
+      line-height: 1;
+    }
+    
+    .corner-tl {
+      top: 5px;
+      left: 5px;
+      transform: rotate(-90deg);
+    }
+    
+    .corner-tr {
+      top: 5px;
+      right: 5px;
+    }
+    
+    .corner-bl {
+      bottom: 5px;
+      left: 5px;
+      transform: rotate(-180deg);
+    }
+    
+    .corner-br {
+      bottom: 5px;
+      right: 5px;
+      transform: rotate(-270deg);
     }
     
     h1, h2, h3 {
-      color: #4fc3f7;
+      color: #d4af37;
       text-align: center;
-      text-shadow: 0 0 10px rgba(79, 195, 247, 0.7);
+      text-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
       margin: 10px 0;
+      font-family: 'SimSun', serif;
+      letter-spacing: 1px;
+      position: relative;
+    }
+    
+    h1::after, h2::after, h3::after {
+      content: "";
+      display: block;
+      width: 60%;
+      height: 1px;
+      background: linear-gradient(to right, transparent, #d4af37, transparent);
+      margin: 5px auto;
     }
     
     .login-form {
       display: block;
+      position: relative;
+      z-index: 2;
     }
     
     .connected-page {
       display: none;
       text-align: center;
+      position: relative;
+      z-index: 2;
     }
     
     .form-group {
-      margin-bottom: 15px;
+      margin-bottom: 18px;
       position: relative;
     }
     
     label {
       display: block;
       margin-bottom: 8px;
-      color: #81d4fa;
+      color: #d4af37;
       font-weight: 500;
+      font-family: 'SimSun', serif;
     }
     
     input {
       width: 100%;
-      padding: 12px;
+      padding: 12px 15px 12px 35px;
       background: rgba(30, 30, 60, 0.7);
-      border: 1px solid #29b6f6;
+      border: 1px solid #d4af37;
       border-radius: 5px;
       color: #e0e0ff;
       box-sizing: border-box;
       transition: all 0.3s ease;
+      font-family: 'SimSun', serif;
     }
     
     input:focus {
       outline: none;
-      border-color: #00bcd4;
-      box-shadow: 0 0 10px rgba(0, 188, 212, 0.5);
+      border-color: #ffd700;
+      box-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
+      background: rgba(40, 40, 70, 0.8);
     }
     
     input::placeholder {
-      color: #90a4ae;
+      color: #a0a0c0;
+    }
+    
+    /* 输入框装饰图标 */
+    .input-with-icon {
+      position: relative;
+    }
+    
+    .input-icon {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #d4af37;
+      font-size: 16px;
     }
     
     button {
       width: 100%;
       padding: 12px;
-      background: linear-gradient(45deg, #00bcd4, #29b6f6);
+      background: linear-gradient(45deg, #8b4513, #d4af37, #8b4513);
       color: white;
-      border: none;
+      border: 1px solid #d4af37;
       border-radius: 5px;
       cursor: pointer;
       font-weight: bold;
@@ -78,12 +159,16 @@
       transition: all 0.3s ease;
       position: relative;
       overflow: hidden;
+      font-family: 'SimSun', serif;
+      letter-spacing: 1px;
+      text-shadow: 0 0 3px rgba(0, 0, 0, 0.8);
     }
     
     button:hover {
-      background: linear-gradient(45deg, #29b6f6, #00bcd4);
-      box-shadow: 0 0 15px rgba(0, 188, 212, 0.7);
+      background: linear-gradient(45deg, #d4af37, #ffd700, #d4af37);
+      box-shadow: 0 0 20px rgba(212, 175, 55, 0.7);
       transform: translateY(-2px);
+      border-color: #ffd700;
     }
     
     button:active {
@@ -108,28 +193,31 @@
     
     #status {
       margin-top: 15px;
-      padding: 8px;
+      padding: 10px;
       text-align: center;
-      border-radius: 4px;
+      border-radius: 5px;
       font-size: 14px;
+      border: 1px solid;
+      position: relative;
+      z-index: 2;
     }
     
     .connected {
-      color: #4caf50;
-      background: rgba(76, 175, 80, 0.1);
-      border: 1px solid rgba(76, 175, 80, 0.3);
+      color: #a8e6cf;
+      background: rgba(168, 230, 207, 0.1);
+      border-color: rgba(168, 230, 207, 0.4);
     }
     
     .disconnected {
-      color: #f44336;
-      background: rgba(244, 67, 54, 0.1);
-      border: 1px solid rgba(244, 67, 54, 0.3);
+      color: #f8b4b4;
+      background: rgba(248, 180, 180, 0.1);
+      border-color: rgba(248, 180, 180, 0.4);
     }
     
-    /* 动画小人样式 */
+    /* 动画古风小人样式 */
     .loader {
-      width: 60px;
-      height: 60px;
+      width: 70px;
+      height: 70px;
       position: relative;
       margin: 20px auto;
     }
@@ -139,197 +227,234 @@
       width: 40px;
       height: 60px;
       top: 0;
-      left: 10px;
+      left: 15px;
     }
     
     .head {
       width: 20px;
       height: 20px;
-      background: #4fc3f7;
+      background: #d4af37;
       border-radius: 50%;
       position: absolute;
       top: 0;
       left: 10px;
-      box-shadow: 0 0 8px rgba(79, 195, 247, 0.8);
+      box-shadow: 0 0 10px rgba(212, 175, 55, 0.8);
     }
     
     .body {
       width: 4px;
       height: 20px;
-      background: #4fc3f7;
+      background: #d4af37;
       position: absolute;
       top: 20px;
       left: 19px;
-      box-shadow: 0 0 5px rgba(79, 195, 247, 0.6);
+      box-shadow: 0 0 6px rgba(212, 175, 55, 0.6);
     }
     
     .arm.left {
       width: 4px;
       height: 15px;
-      background: #4fc3f7;
+      background: #d4af37;
       position: absolute;
       top: 22px;
       left: 10px;
       transform-origin: top center;
       animation: swing-left 1s infinite alternate;
-      box-shadow: 0 0 5px rgba(79, 195, 247, 0.6);
+      box-shadow: 0 0 6px rgba(212, 175, 55, 0.6);
     }
     
     .arm.right {
       width: 4px;
       height: 15px;
-      background: #4fc3f7;
+      background: #d4af37;
       position: absolute;
       top: 22px;
       left: 24px;
       transform-origin: top center;
       animation: swing-right 1s infinite alternate;
-      box-shadow: 0 0 5px rgba(79, 195, 247, 0.6);
+      box-shadow: 0 0 6px rgba(212, 175, 55, 0.6);
     }
     
     .leg.left {
       width: 4px;
       height: 15px;
-      background: #4fc3f7;
+      background: #d4af37;
       position: absolute;
       top: 40px;
       left: 16px;
       transform-origin: top center;
       animation: step-left 1s infinite alternate;
-      box-shadow: 0 0 5px rgba(79, 195, 247, 0.6);
+      box-shadow: 0 0 6px rgba(212, 175, 55, 0.6);
     }
     
     .leg.right {
       width: 4px;
       height: 15px;
-      background: #4fc3f7;
+      background: #d4af37;
       position: absolute;
       top: 40px;
       left: 20px;
       transform-origin: top center;
       animation: step-right 1s infinite alternate;
-      box-shadow: 0 0 5px rgba(79, 195, 247, 0.6);
+      box-shadow: 0 0 6px rgba(212, 175, 55, 0.6);
     }
     
     @keyframes swing-left {
-      0% { transform: rotate(-20deg); }
-      100% { transform: rotate(20deg); }
+      0% { transform: rotate(-25deg); }
+      100% { transform: rotate(25deg); }
     }
     
     @keyframes swing-right {
-      0% { transform: rotate(20deg); }
-      100% { transform: rotate(-20deg); }
+      0% { transform: rotate(25deg); }
+      100% { transform: rotate(-25deg); }
     }
     
     @keyframes step-left {
-      0% { transform: rotate(-10deg); }
-      100% { transform: rotate(10deg); }
+      0% { transform: rotate(-15deg); }
+      100% { transform: rotate(15deg); }
     }
     
     @keyframes step-right {
-      0% { transform: rotate(10deg); }
-      100% { transform: rotate(-10deg); }
+      0% { transform: rotate(15deg); }
+      100% { transform: rotate(-15deg); }
     }
     
     .connection-status {
       font-size: 16px;
       font-weight: bold;
       margin-top: 10px;
-      color: #4fc3f7;
-      text-shadow: 0 0 5px rgba(79, 195, 247, 0.5);
+      color: #d4af37;
+      text-shadow: 0 0 5px rgba(212, 175, 55, 0.5);
     }
     
     .client-info {
       margin-top: 15px;
       font-size: 13px;
-      color: #bbdefb;
+      color: #e0c9a6;
+      background: rgba(139, 69, 19, 0.1);
+      padding: 10px;
+      border-radius: 5px;
+      border: 1px solid rgba(212, 175, 55, 0.2);
     }
     
     .client-info div {
-      margin: 5px 0;
+      margin: 6px 0;
     }
     
     .client-info span {
-      color: #e3f2fd;
+      color: #ffd700;
       font-weight: 500;
     }
     
     .back-btn {
-      background: linear-gradient(45deg, #f44336, #e91e63);
+      background: linear-gradient(45deg, #8b0000, #cd5c5c, #8b0000);
       margin-top: 10px;
     }
     
     .back-btn:hover {
-      background: linear-gradient(45deg, #e91e63, #f44336);
-      box-shadow: 0 0 15px rgba(244, 67, 54, 0.7);
+      background: linear-gradient(45deg, #cd5c5c, #ffa07a, #cd5c5c);
+      box-shadow: 0 0 20px rgba(205, 92, 92, 0.7);
     }
     
     .glow {
-      animation: glow-pulse 2s infinite;
+      animation: glow-pulse 3s infinite;
     }
     
     @keyframes glow-pulse {
-      0% { box-shadow: 0 0 5px rgba(79, 195, 247, 0.5); }
-      50% { box-shadow: 0 0 20px rgba(79, 195, 247, 0.8); }
-      100% { box-shadow: 0 0 5px rgba(79, 195, 247, 0.5); }
+      0% { box-shadow: 0 0 5px rgba(212, 175, 55, 0.5); }
+      50% { box-shadow: 0 0 20px rgba(212, 175, 55, 0.8); }
+      100% { box-shadow: 0 0 5px rgba(212, 175, 55, 0.5); }
     }
     
-    .grid-bg {
+    /* 古典背景花纹 */
+    .ornament-pattern {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
       background-image: 
-        linear-gradient(rgba(0, 195, 255, 0.1) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(0, 195, 255, 0.1) 1px, transparent 1px);
-      background-size: 20px 20px;
-      z-index: -1;
-      opacity: 0.3;
+        radial-gradient(circle at 10% 20%, rgba(212, 175, 55, 0.05) 1.5%, transparent 2%),
+        radial-gradient(circle at 90% 80%, rgba(212, 175, 55, 0.05) 1.5%, transparent 2%),
+        radial-gradient(circle at 30% 40%, rgba(139, 69, 19, 0.05) 1%, transparent 1.5%),
+        radial-gradient(circle at 70% 30%, rgba(139, 69, 19, 0.05) 1%, transparent 1.5%),
+        radial-gradient(circle at 50% 50%, rgba(212, 175, 55, 0.03) 1%, transparent 1.5%);
+      background-size: 200% 200%;
+      z-index: 1;
+      pointer-events: none;
+    }
+    
+    /* 古典装饰线条 */
+    .decoration-line {
+      height: 1px;
+      background: linear-gradient(to right, transparent, #d4af37, transparent);
+      margin: 15px 0;
+    }
+    
+    /* 古典花纹符号 */
+    .ornament-symbol {
+      display: inline-block;
+      font-size: 20px;
+      color: rgba(212, 175, 55, 0.6);
+      margin: 0 5px;
     }
   </style>
 </head>
 <body>
-  <div class="grid-bg"></div>
+  <div class="ornament-pattern"></div>
+  <div class="decoration-corner corner-tl">✦</div>
+  <div class="decoration-corner corner-tr">✦</div>
+  <div class="decoration-corner corner-bl">✦</div>
+  <div class="decoration-corner corner-br">✦</div>
+  
   <!-- 注册表单 -->
   <div id="registerForm" class="login-form" style="display: none;">
-    <h2 class="glow">注册账号</h2>
-    <div class="form-group">
+    <h2 class="glow">【 用户注册 】</h2>
+    <div class="decoration-line"></div>
+    <div class="form-group input-with-icon">
+      <span class="input-icon">✎</span>
       <label for="regUsername">用户名:</label>
-      <input type="text" id="regUsername" placeholder="输入用户名">
+      <input type="text" id="regUsername" placeholder="请输入用户名">
     </div>
-    <div class="form-group">
+    <div class="form-group input-with-icon">
+      <span class="input-icon">🔒</span>
       <label for="regPassword">密码:</label>
-      <input type="password" id="regPassword" placeholder="输入密码">
+      <input type="password" id="regPassword" placeholder="请输入密码">
     </div>
-    <div class="form-group">
+    <div class="form-group input-with-icon">
+      <span class="input-icon">🔒</span>
       <label for="regConfirmPassword">确认密码:</label>
-      <input type="password" id="regConfirmPassword" placeholder="确认密码">
+      <input type="password" id="regConfirmPassword" placeholder="请再次输入密码">
     </div>
-    <button id="registerBtn" class="glow">注册</button>
-    <button id="showLoginBtn" class="back-btn">返回登录</button>
+    <button id="registerBtn" class="glow">【 注册账户 】</button>
+    <button id="showLoginBtn" class="back-btn">【 返回登录 】</button>
     <div id="regStatus"></div>
   </div>
   
   <!-- 登录表单 -->
   <div id="loginForm" class="login-form">
-    <h2 class="glow">爬虫助手</h2>
-    <div class="form-group">
+    <h2 class="glow">【 爬虫助手 】</h2>
+    <div class="ornament-symbol">❀</div>
+    <div class="decoration-line"></div>
+    <div class="form-group input-with-icon">
+      <span class="input-icon">✎</span>
       <label for="username">用户名:</label>
-      <input type="text" id="username" placeholder="输入用户名">
+      <input type="text" id="username" placeholder="请输入用户名">
     </div>
-    <div class="form-group">
+    <div class="form-group input-with-icon">
+      <span class="input-icon">🔒</span>
       <label for="password">密码:</label>
-      <input type="password" id="password" placeholder="输入密码">
+      <input type="password" id="password" placeholder="请输入密码">
     </div>
-    <button id="loginBtn" class="glow">登录</button>
-    <button id="showRegisterBtn" class="back-btn">注册账号</button>
+    <button id="loginBtn" class="glow">【 登录系统 】</button>
+    <button id="showRegisterBtn" class="back-btn">【 注册账户 】</button>
     <div id="status"></div>
   </div>
   
   <!-- 已连接页面 -->
   <div id="connectedPage" class="connected-page">
-    <h3 class="glow">已连接</h3>
+    <h3 class="glow">【 已连接 】</h3>
+    <div class="ornament-symbol">✿</div>
     <div class="loader">
       <div class="person">
         <div class="head"></div>
@@ -340,15 +465,15 @@
         <div class="leg right"></div>
       </div>
     </div>
-    <div class="connection-status">WebSocket 连接成功</div>
+    <div class="connection-status">【 WebSocket 连接成功 】</div>
     <div class="client-info">
-      <div>客户端ID: <span id="clientIdDisplay">-</span></div>
-      <div>用户名: <span id="usernameDisplay">-</span></div>
-      <div>当前页面: <span id="currentUrlDisplay">-</span></div>
+      <div>【 客户端ID: 】<span id="clientIdDisplay">-</span></div>
+      <div>【 用户名: 】<span id="usernameDisplay">-</span></div>
+      <div>【 当前页面: 】<span id="currentUrlDisplay">-</span></div>
     </div>
-    <button id="copyClientIdBtn" class="back-btn">复制客户端ID</button>
-    <button id="logoutBtn" class="back-btn glow">退出登录</button>
-    <button id="backBtn" class="back-btn" style="display: none;">返回</button>
+    <button id="copyClientIdBtn" class="back-btn">【 复制ID 】</button>
+    <button id="logoutBtn" class="back-btn glow">【 退出登录 】</button>
+    <button id="backBtn" class="back-btn" style="display: none;">【 返回 】</button>
   </div>
   
   <script src="login.js"></script>

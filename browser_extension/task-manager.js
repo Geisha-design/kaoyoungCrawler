@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // 监听添加任务按钮
   addTaskBtn.addEventListener('click', function() {
     resetForm();
-    formTitle.textContent = '添加定时任务';
+    formTitle.textContent = '【 添加定时任务 】';
     currentEditTask = null;
     taskForm.classList.remove('hidden');
   });
@@ -109,9 +109,9 @@ document.addEventListener('DOMContentLoaded', function() {
         <td>${Math.floor(task.interval / 1000)}</td>
         <td>${task.enabled ? '启用' : '禁用'}</td>
         <td>
-          <button class="btn btn-warning" onclick="editTask('${task.taskKey}')">编辑</button>
-          <button class="btn btn-danger" onclick="deleteTask('${task.taskKey}')">删除</button>
-          <button class="btn btn-primary" onclick="toggleTask('${task.taskKey}', ${task.enabled})">${task.enabled ? '禁用' : '启用'}</button>
+          <button class="btn btn-warning" onclick="editTask('${task.taskKey}')">【 编辑 】</button>
+          <button class="btn btn-danger" onclick="deleteTask('${task.taskKey}')">【 删除 】</button>
+          <button class="btn btn-primary" onclick="toggleTask('${task.taskKey}', ${task.enabled})">${task.enabled ? '【 禁用 】' : '【 启用 】'}</button>
         </td>
       `;
       
@@ -161,7 +161,7 @@ document.addEventListener('DOMContentLoaded', function() {
             intervalInput.value = task.interval;
             enabledCheckbox.checked = task.enabled;
             
-            formTitle.textContent = '编辑定时任务';
+            formTitle.textContent = '【 编辑定时任务 】';
             currentEditTask = taskKey;
             taskForm.classList.remove('hidden');
           }

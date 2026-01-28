@@ -5,106 +5,304 @@
   <title>定时任务管理</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      max-width: 800px;
+      font-family: 'SimSun', 'Times New Roman', serif;
+      max-width: 850px;
       margin: 0 auto;
-      padding: 20px;
+      padding: 25px;
+      background: linear-gradient(135deg, #1e1e2f, #2d2d4a, #1e1e2f);
+      color: #e0e0ff;
+      border-radius: 15px;
+      box-shadow: 0 0 25px rgba(139, 69, 19, 0.6);
+      position: relative;
+      overflow: hidden;
     }
+    
+    /* 古典花纹边框 */
+    body::before {
+      content: "";
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      right: 15px;
+      bottom: 15px;
+      border: 2px solid rgba(210, 180, 140, 0.4);
+      pointer-events: none;
+      border-radius: 10px;
+    }
+    
+    /* 古典装饰角 */
+    .decoration-corner {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      color: rgba(210, 180, 140, 0.6);
+      font-size: 30px;
+      line-height: 1;
+    }
+    
+    .corner-tl {
+      top: 8px;
+      left: 8px;
+      transform: rotate(-90deg);
+    }
+    
+    .corner-tr {
+      top: 8px;
+      right: 8px;
+    }
+    
+    .corner-bl {
+      bottom: 8px;
+      left: 8px;
+      transform: rotate(-180deg);
+    }
+    
+    .corner-br {
+      bottom: 8px;
+      right: 8px;
+      transform: rotate(-270deg);
+    }
+    
+    /* 古典背景花纹 */
+    .ornament-pattern {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(212, 175, 55, 0.05) 1.5%, transparent 2%),
+        radial-gradient(circle at 90% 80%, rgba(212, 175, 55, 0.05) 1.5%, transparent 2%),
+        radial-gradient(circle at 30% 40%, rgba(139, 69, 19, 0.05) 1%, transparent 1.5%),
+        radial-gradient(circle at 70% 30%, rgba(139, 69, 19, 0.05) 1%, transparent 1.5%),
+        radial-gradient(circle at 50% 50%, rgba(212, 175, 55, 0.03) 1%, transparent 1.5%);
+      background-size: 200% 200%;
+      z-index: 1;
+      pointer-events: none;
+    }
+    
+    h1 {
+      color: #d4af37;
+      text-align: center;
+      text-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+      margin: 10px 0;
+      font-family: 'SimSun', serif;
+      letter-spacing: 2px;
+      position: relative;
+      z-index: 2;
+    }
+    
+    h1::after {
+      content: "";
+      display: block;
+      width: 60%;
+      height: 1px;
+      background: linear-gradient(to right, transparent, #d4af37, transparent);
+      margin: 10px auto;
+    }
+    
     table {
       width: 100%;
       border-collapse: collapse;
       margin-top: 20px;
+      background: rgba(30, 30, 60, 0.6);
+      border: 1px solid rgba(212, 175, 55, 0.3);
+      border-radius: 8px;
+      overflow: hidden;
+      z-index: 2;
+      position: relative;
     }
+    
     th, td {
-      border: 1px solid #ddd;
+      border: 1px solid rgba(212, 175, 55, 0.3);
       padding: 12px;
       text-align: left;
+      color: #e0e0ff;
     }
+    
     th {
-      background-color: #f2f2f2;
+      background: linear-gradient(to bottom, rgba(139, 69, 19, 0.4), rgba(212, 175, 55, 0.3));
+      color: #ffd700;
+      font-weight: bold;
     }
+    
+    tr:nth-child(even) {
+      background: rgba(50, 50, 80, 0.3);
+    }
+    
     .btn {
       padding: 8px 12px;
       margin: 2px;
       cursor: pointer;
-      border: none;
+      border: 1px solid #d4af37;
       border-radius: 4px;
+      font-family: 'SimSun', serif;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
     }
+    
     .btn-primary {
-      background-color: #007bff;
+      background: linear-gradient(45deg, #8b4513, #d4af37);
       color: white;
     }
+    
     .btn-success {
-      background-color: #28a745;
+      background: linear-gradient(45deg, #5d4037, #8d6e63);
       color: white;
     }
+    
     .btn-danger {
-      background-color: #dc3545;
+      background: linear-gradient(45deg, #8b0000, #cd5c5c);
       color: white;
     }
+    
     .btn-warning {
-      background-color: #ffc107;
+      background: linear-gradient(45deg, #ff8c00, #ffa500);
       color: black;
     }
+    
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+    }
+    
     .form-group {
       margin-bottom: 15px;
+      position: relative;
     }
+    
     label {
       display: block;
       margin-bottom: 5px;
       font-weight: bold;
+      color: #d4af37;
+      font-family: 'SimSun', serif;
     }
+    
     input, select {
       width: 100%;
-      padding: 8px;
+      padding: 10px;
+      background: rgba(30, 30, 60, 0.7);
+      border: 1px solid #d4af37;
+      border-radius: 4px;
+      color: #e0e0ff;
       box-sizing: border-box;
+      font-family: 'SimSun', serif;
+      transition: all 0.3s ease;
     }
+    
+    input:focus, select:focus {
+      outline: none;
+      border-color: #ffd700;
+      box-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+      background: rgba(40, 40, 70, 0.8);
+    }
+    
     .hidden {
       display: none;
+    }
+    
+    #taskForm {
+      background: rgba(30, 30, 60, 0.7);
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px solid rgba(212, 175, 55, 0.3);
+      margin-bottom: 20px;
+      z-index: 2;
+      position: relative;
+    }
+    
+    #formTitle {
+      color: #d4af37;
+      margin-top: 0;
+      font-family: 'SimSun', serif;
+      text-align: center;
+    }
+    
+    #addTaskBtn {
+      background: linear-gradient(45deg, #8b4513, #d4af37);
+      color: white;
+      padding: 10px 20px;
+      border: 1px solid #d4af37;
+      border-radius: 5px;
+      cursor: pointer;
+      font-family: 'SimSun', serif;
+      margin-bottom: 20px;
+      display: block;
+      width: 150px;
+    }
+    
+    #addTaskBtn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
+    }
+    
+    /* 古典装饰线条 */
+    .decoration-line {
+      height: 1px;
+      background: linear-gradient(to right, transparent, #d4af37, transparent);
+      margin: 15px 0;
+    }
+    
+    /* 古典花纹符号 */
+    .ornament-symbol {
+      display: inline-block;
+      font-size: 20px;
+      color: rgba(212, 175, 55, 0.6);
+      margin: 0 5px;
     }
   </style>
 </head>
 <body>
-  <h1>定时任务管理</h1>
+  <div class="ornament-pattern"></div>
+  <div class="decoration-corner corner-tl">✦</div>
+  <div class="decoration-corner corner-tr">✦</div>
+  <div class="decoration-corner corner-bl">✦</div>
+  <div class="decoration-corner corner-br">✦</div>
+  
+  <h1>【 定时任务管理 】</h1>
+  <div class="ornament-symbol">❀</div>
   
   <div id="taskForm" class="hidden">
-    <h2 id="formTitle">添加定时任务</h2>
+    <h2 id="formTitle">【 添加定时任务 】</h2>
+    <div class="decoration-line"></div>
     <div class="form-group">
-      <label for="taskName">任务名称:</label>
+      <label for="taskName">【 任务名称: 】</label>
       <input type="text" id="taskName" placeholder="输入任务名称">
     </div>
     <div class="form-group">
-      <label for="scriptId">脚本ID:</label>
+      <label for="scriptId">【 脚本ID: 】</label>
       <input type="text" id="scriptId" placeholder="输入脚本ID">
     </div>
     <div class="form-group">
-      <label for="domain">目标域名（正则）:</label>
+      <label for="domain">【 目标域名（正则）: 】</label>
       <input type="text" id="domain" placeholder="输入域名正则表达式">
     </div>
     <div class="form-group">
-      <label for="interval">执行间隔（毫秒）:</label>
+      <label for="interval">【 执行间隔（毫秒）: 】</label>
       <input type="number" id="interval" placeholder="输入执行间隔（毫秒）">
     </div>
     <div class="form-group">
       <label>
-        <input type="checkbox" id="enabled"> 启用任务
+        <input type="checkbox" id="enabled"> 【 启用任务 】
       </label>
     </div>
-    <button id="saveTaskBtn" class="btn btn-primary">保存任务</button>
-    <button id="cancelBtn" class="btn btn-danger">取消</button>
+    <button id="saveTaskBtn" class="btn btn-primary">【 保存任务 】</button>
+    <button id="cancelBtn" class="btn btn-danger">【 取消 】</button>
   </div>
   
-  <button id="addTaskBtn" class="btn btn-success">添加任务</button>
+  <button id="addTaskBtn" class="btn btn-success">【 添加任务 】</button>
   
   <table id="taskTable">
     <thead>
       <tr>
-        <th>任务名称</th>
-        <th>脚本ID</th>
-        <th>目标域名</th>
-        <th>执行间隔(秒)</th>
-        <th>状态</th>
-        <th>操作</th>
+        <th>【 任务名称 】</th>
+        <th>【 脚本ID 】</th>
+        <th>【 目标域名 】</th>
+        <th>【 执行间隔(秒) 】</th>
+        <th>【 状态 】</th>
+        <th>【 操作 】</th>
       </tr>
     </thead>
     <tbody id="taskTableBody">

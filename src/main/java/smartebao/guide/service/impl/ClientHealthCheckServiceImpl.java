@@ -57,9 +57,6 @@ public class ClientHealthCheckServiceImpl implements ClientHealthCheckService {
                 status.put("status", client.getStatus());
                 status.put("lastHeartbeat", clientCacheService.getClientLastHeartbeat(client.getClientId()));
 
-                System.out.println("clientId: " + client.getClientId());
-                System.out.println("isHealthy: " + webSocketService.isClientHealthy(client.getClientId()));
-                System.out.println("lastHeartbeat: " + clientCacheService.getClientLastHeartbeat(client.getClientId()));
                 status.put("isHealthy", false);
 
                 unhealthyClients.add(status);
