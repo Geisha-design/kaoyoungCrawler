@@ -80,6 +80,18 @@ springdoc:
   paths-to-match:
     - /api/**
 
+# 日志配置
 logging:
   level:
     smartebao.guide: debug
+    org.springframework.web: INFO
+    org.springframework.security: INFO
+    org.springframework.data: INFO
+    # MyBatis SQL日志
+    com.baomidou.mybatisplus: DEBUG
+    org.apache.ibatis: DEBUG
+  pattern:
+    # 控制台日志格式
+    console: "%clr(%d{HH:mm:ss.SSS}){faint} %clr(${LOG_LEVEL_PATTERN:-%5p}) %clr(${PID:- }){magenta} %clr(---){faint} %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}}"
+    # 文件日志格式
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} ${LOG_LEVEL_PATTERN:-%5p} ${PID:- } --- [%t] %-40.40logger{39} : %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}"

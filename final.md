@@ -86,7 +86,7 @@
 
 ### 脚本执行命令消息格式
 
-``json
+```json
 {
   "type": "execute_script",
   "payload": {
@@ -155,6 +155,7 @@
 - **Lombok**: 代码简化
 - **Spring Security**: 安全控制
 - **SpringDoc + Knife4j**: API文档
+- **SLF4J + Logback + Logstash-Logback-Encoder**: 日志框架
 
 ### 前端技术栈
 - **Chrome Extension Manifest V3**: 浏览器扩展规范
@@ -195,6 +196,13 @@
 - 基于时间间隔的任务调度
 - 仅空闲时执行任务选项
 
+### 7. 日志管理
+- 结构化日志输出（JSON格式）
+- 多环境日志配置（dev/test/prod）
+- 请求链路追踪（MDC）
+- 分级日志记录（DEBUG/INFO/WARN/ERROR）
+- 日志文件自动滚动和归档
+
 ## 核心模块详解
 
 ### 后端模块
@@ -207,6 +215,7 @@
 - **LoginController**: 用户认证
 - **ScheduledTaskController**: 定时任务管理
 - **ScriptController**: 爬虫脚本管理
+- **ClientScriptController**: 客户端脚本执行
 
 #### 2. 实体层 (Entities)
 - **CrawlerUser**: 用户信息
@@ -237,6 +246,7 @@
 - **JwtUtil**: JWT令牌处理
 - **RedisUtil**: Redis操作工具
 - **ResponseData**: 统一响应格式
+- **LogUtils**: 统一日志工具类
 
 #### 6. 配置层 (Config)
 - **MyBatisPlusConfig**: MyBatis-Plus配置
@@ -268,6 +278,31 @@
 - **域名匹配**: 自动匹配域名与脚本
 - **空闲检测**: 检测用户空闲状态
 - **定时任务**: Chrome Alarms API实现
+
+## 日志框架功能
+
+### 日志框架组成
+- **SLF4J + Logback**: 作为主要的日志实现
+- **Logstash-Logback-Encoder**: 提供JSON格式的结构化日志输出
+- **LogUtils工具类**: 统一的日志记录接口和MDC上下文管理
+
+### 日志配置
+- **多环境支持**: 开发/测试/生产环境不同配置
+- **多种输出格式**: 控制台、文件、JSON结构化日志
+- **智能滚动**: 按日期和大小自动滚动日志文件
+- **分级记录**: 不同模块和级别的日志分类记录
+
+### 日志最佳实践
+已在关键组件中集成日志记录，包括：
+- 控制器层：记录请求入口和响应出口
+- 服务层：记录业务逻辑执行过程
+- WebSocket处理器：记录连接和消息处理
+- 数据访问层：记录SQL执行（通过MyBatis）
+
+### 日志文件位置
+- 应用日志: `./logs/kaoyoungCrawler.log`
+- 错误日志: `./logs/kaoyoungCrawler_error.log`
+- 结构化日志: `./logs/kaoyoungCrawler_structured.log`
 
 ## 数据库设计
 
@@ -423,6 +458,7 @@ src/main/java/smartebao/guide/
 4. **健康监控**: 自动检测和清理不健康客户端
 5. **任务管理**: 统一的定时任务管理机制
 6. **实时通信**: 双向实时通信保障任务执行
+7. **结构化日志**: 提供JSON格式的结构化日志输出，便于日志分析和监控
 
 ## 总结
 

@@ -1,6 +1,9 @@
 package smartebao.guide.websocket;
 
 import com.alibaba.fastjson.JSON;
+import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Lazy;
@@ -14,6 +17,7 @@ import smartebao.guide.mapper.CrawlerResultMapper;
 import smartebao.guide.service.ClientCacheService;
 import smartebao.guide.service.WebSocketService;
 import smartebao.guide.utils.JwtUtil;
+import smartebao.guide.utils.LogUtils;
 
 import javax.websocket.*;
 import javax.websocket.server.ServerEndpoint;
@@ -25,7 +29,10 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @ServerEndpoint(value = "/ws", configurator = WebSocketConfigurator.class)
 @Component
+@Slf4j
 public class CrawlerWebSocketHandler {
+
+    private static final Logger logger = LoggerFactory.getLogger(CrawlerWebSocketHandler.class);
 
     // 存储在线客户端会话
     private static Map<String, Session> sessionMap = new ConcurrentHashMap<>();
@@ -45,67 +52,75 @@ public class CrawlerWebSocketHandler {
      */
     @OnOpen
     public void onOpen(Session session) {
-        // 从session中获取JWT token进行验证
-        String token = getSessionAttribute(session, "token");
+        LogUtils.generateRequestId(); // 生成请求ID
+        LogUtils.logMethodEntry(this.getClass().getSimpleName(), "onOpen", session.getId());
         
-        // 检查token是否在握手阶段已验证
-        Object tokenValidObj = session.getUserProperties().get("token_valid");
-        boolean tokenValid = tokenValidObj instanceof Boolean ? (Boolean) tokenValidObj : true;
-        
-        // 确保jwtUtil已初始化
-        if (jwtUtil == null) {
-            // 从WebSocketConfigurator获取Bean
-            jwtUtil = WebSocketConfigurator.getJwtUtil();
-            crawlerClientMapper = WebSocketConfigurator.getCrawlerClientMapper();
-            crawlerResultMapper = WebSocketConfigurator.getCrawlerResultMapper();
-            webSocketService = WebSocketConfigurator.getWebSocketService();
-            clientCacheService = WebSocketConfigurator.getClientCacheService();
-        }
-        
-        if (jwtUtil == null) {
-            try {
-                // 如果仍然无法获取jwtUtil，关闭连接
-                CloseReason closeReason = new CloseReason(CloseReason.CloseCodes.UNEXPECTED_CONDITION, "Authentication service unavailable");
-                session.close(closeReason);
-                System.out.println("JWT验证服务不可用，已关闭连接");
-                return;
-            } catch (IOException e) {
-                e.printStackTrace();
+        try {
+            // 从session中获取JWT token进行验证
+            String token = getSessionAttribute(session, "token");
+            
+            // 检查token是否在握手阶段已验证
+            Object tokenValidObj = session.getUserProperties().get("token_valid");
+            boolean tokenValid = tokenValidObj instanceof Boolean ? (Boolean) tokenValidObj : true;
+            
+            // 确保jwtUtil已初始化
+            if (jwtUtil == null) {
+                // 从WebSocketConfigurator获取Bean
+                jwtUtil = WebSocketConfigurator.getJwtUtil();
+                crawlerClientMapper = WebSocketConfigurator.getCrawlerClientMapper();
+                crawlerResultMapper = WebSocketConfigurator.getCrawlerResultMapper();
+                webSocketService = WebSocketConfigurator.getWebSocketService();
+                clientCacheService = WebSocketConfigurator.getClientCacheService();
             }
-        }
-        
-        if (!tokenValid || token == null || !jwtUtil.validateToken(token)) {
-            try {
-                // 发送403错误码并关闭连接
-                CloseReason closeReason = new CloseReason(CloseReason.CloseCodes.VIOLATED_POLICY, "Authentication failed");
-                session.close(closeReason);
-                System.out.println("WebSocket连接认证失败，已关闭连接 - token有效: " + tokenValid + ", token存在: " + (token != null));
-                return;
-            } catch (IOException e) {
-                e.printStackTrace();
+            
+            if (jwtUtil == null) {
+                try {
+                    // 如果仍然无法获取jwtUtil，关闭连接
+                    CloseReason closeReason = new CloseReason(CloseReason.CloseCodes.UNEXPECTED_CONDITION, "Authentication service unavailable");
+                    session.close(closeReason);
+                    LogUtils.logError("JWT验证服务不可用，已关闭连接", null);
+                    return;
+                } catch (IOException e) {
+                    LogUtils.logError("关闭WebSocket连接时发生异常", e);
+                }
             }
+            
+            if (!tokenValid || token == null || !jwtUtil.validateToken(token)) {
+                try {
+                    // 发送403错误码并关闭连接
+                    CloseReason closeReason = new CloseReason(CloseReason.CloseCodes.VIOLATED_POLICY, "Authentication failed");
+                    session.close(closeReason);
+                    LogUtils.logWarning("WebSocket连接认证失败，已关闭连接 - token有效: " + tokenValid + ", token存在: " + (token != null));
+                    return;
+                } catch (IOException e) {
+                    LogUtils.logError("关闭WebSocket连接时发生异常", e);
+                }
+            }
+            
+            LogUtils.logInfo("WebSocket连接建立成功 - token: " + (token != null ? token.substring(0, Math.min(20, token.length())) + "..." : "null"));
+            
+            // 从token中提取用户名，用于生成或查找clientId
+            String username = jwtUtil.getUsernameFromToken(token);
+            String clientId = generateOrGetClientId(username); // 根据用户名生成或获取已存在的clientId
+            
+            LogUtils.logInfo("认证成功，准备发送认证成功消息 - clientId: " + clientId + ", username: " + username);
+            
+            // 发送认证成功消息，通知客户端可以进行注册
+            AuthSuccessMessage authMsg = new AuthSuccessMessage();
+            authMsg.setType("auth_success");
+            authMsg.setPayload(new AuthSuccessPayload(clientId));
+            authMsg.setClientId(clientId);
+            authMsg.setTimestamp(System.currentTimeMillis());
+            sendMessage(session, JSON.toJSONString(authMsg));
+            
+            // 临时将clientId存储在session中，等待register消息
+            session.getUserProperties().put("clientId", clientId);
+            
+            LogUtils.logInfo("已发送认证成功消息，等待客户端注册 - clientId: " + clientId + ", username: " + username);
+            LogUtils.logMethodExit(this.getClass().getSimpleName(), "onOpen", "Connection established");
+        } finally {
+            LogUtils.clearMDC(); // 清理MDC
         }
-        
-        System.out.println("WebSocket连接建立成功 - token: " + (token != null ? token.substring(0, Math.min(20, token.length())) + "..." : "null"));
-        
-        // 从token中提取用户名，用于生成或查找clientId
-        String username = jwtUtil.getUsernameFromToken(token);
-        String clientId = generateOrGetClientId(username); // 根据用户名生成或获取已存在的clientId
-        
-        System.out.println("认证成功，准备发送认证成功消息 - clientId: " + clientId + ", username: " + username);
-        
-        // 发送认证成功消息，通知客户端可以进行注册
-        AuthSuccessMessage authMsg = new AuthSuccessMessage();
-        authMsg.setType("auth_success");
-        authMsg.setPayload(new AuthSuccessPayload(clientId));
-        authMsg.setClientId(clientId);
-        authMsg.setTimestamp(System.currentTimeMillis());
-        sendMessage(session, JSON.toJSONString(authMsg));
-        
-        // 临时将clientId存储在session中，等待register消息
-        session.getUserProperties().put("clientId", clientId);
-        
-        System.out.println("已发送认证成功消息，等待客户端注册 - clientId: " + clientId + ", username: " + username);
     }
 
     /**
@@ -113,17 +128,25 @@ public class CrawlerWebSocketHandler {
      */
     @OnClose
     public void onClose(Session session) {
-        String clientId = getSessionAttribute(session, "clientId");
-        if (clientId != null) {
-            sessionMap.remove(clientId);
-            clientInfoMap.remove(clientId);
-            
-            // 更新客户端状态为offline
-            webSocketService.updateClientStatus(clientId, "offline");
-            
-            System.out.println("客户端 " + clientId + " 已断开连接");
-        } else {
-            System.out.println("WebSocket连接已关闭，但未找到对应的clientId");
+        LogUtils.generateRequestId(); // 生成请求ID
+        LogUtils.logMethodEntry(this.getClass().getSimpleName(), "onClose", session.getId());
+        
+        try {
+            String clientId = getSessionAttribute(session, "clientId");
+            if (clientId != null) {
+                sessionMap.remove(clientId);
+                clientInfoMap.remove(clientId);
+                
+                // 更新客户端状态为offline
+                webSocketService.updateClientStatus(clientId, "offline");
+                
+                LogUtils.logInfo("客户端 " + clientId + " 已断开连接");
+            } else {
+                LogUtils.logInfo("WebSocket连接已关闭，但未找到对应的clientId");
+            }
+            LogUtils.logMethodExit(this.getClass().getSimpleName(), "onClose", "Connection closed");
+        } finally {
+            LogUtils.clearMDC(); // 清理MDC
         }
     }
 
@@ -132,6 +155,9 @@ public class CrawlerWebSocketHandler {
      */
     @OnMessage
     public void onMessage(String message, Session session) {
+        LogUtils.generateRequestId(); // 生成请求ID
+        LogUtils.logMethodEntry(this.getClass().getSimpleName(), "onMessage", message);
+        
         try {
             // 解析消息
             MessageInfo msgInfo = JSON.parseObject(message, MessageInfo.class);
@@ -161,11 +187,14 @@ public class CrawlerWebSocketHandler {
                     handleExecuteScriptResponse(msgInfo);
                     break;
                 default:
-                    System.out.println("收到未知类型消息: " + type);
+                    LogUtils.logWarning("收到未知类型消息: " + type);
                     break;
             }
+            LogUtils.logMethodExit(this.getClass().getSimpleName(), "onMessage", "Message processed");
         } catch (Exception e) {
-            e.printStackTrace();
+            LogUtils.logError("处理WebSocket消息时发生异常", e);
+        } finally {
+            LogUtils.clearMDC(); // 清理MDC
         }
     }
 
@@ -174,14 +203,23 @@ public class CrawlerWebSocketHandler {
      */
     @OnError
     public void onError(Session session, Throwable error) {
-        System.out.println("WebSocket发生错误: " + error.getMessage());
-        error.printStackTrace();
+        LogUtils.generateRequestId(); // 生成请求ID
+        LogUtils.logMethodEntry(this.getClass().getSimpleName(), "onError", session.getId());
+        
+        try {
+            LogUtils.logError("WebSocket发生错误: " + error.getMessage(), error);
+        } finally {
+            LogUtils.clearMDC(); // 清理MDC
+        }
     }
 
     /**
      * 处理客户端注册
      */
     private void handleRegister(MessageInfo msgInfo, Session session) {
+        LogUtils.generateRequestId(); // 生成请求ID
+        LogUtils.logMethodEntry(this.getClass().getSimpleName(), "handleRegister", msgInfo.getClientId());
+        
         try {
             RegisterPayload payload = JSON.toJavaObject((JSON) JSON.toJSON(msgInfo.getPayload()), RegisterPayload.class);
             String clientId = msgInfo.getClientId();
@@ -209,9 +247,12 @@ public class CrawlerWebSocketHandler {
             // 批量下发脚本
             sendScriptsToClient(clientId, "batch");
 
-            System.out.println("客户端 " + clientId + " 注册成功，空闲状态: " + (idleStatus != null ? idleStatus : false));
+            LogUtils.logInfo("客户端 " + clientId + " 注册成功，空闲状态: " + (idleStatus != null ? idleStatus : false));
+            LogUtils.logMethodExit(this.getClass().getSimpleName(), "handleRegister", "Client registered");
         } catch (Exception e) {
-            e.printStackTrace();
+            LogUtils.logError("处理客户端注册时发生异常", e);
+        } finally {
+            LogUtils.clearMDC(); // 清理MDC
         }
     }
 
@@ -219,6 +260,9 @@ public class CrawlerWebSocketHandler {
      * 处理网址变化
      */
     private void handleUrlChange(MessageInfo msgInfo) {
+        LogUtils.generateRequestId(); // 生成請求ID
+        LogUtils.logMethodEntry(this.getClass().getSimpleName(), "handleUrlChange", msgInfo.getClientId());
+        
         try {
             UrlChangePayload payload = JSON.toJavaObject((JSON) JSON.toJSON(msgInfo.getPayload()), UrlChangePayload.class);
             String clientId = msgInfo.getClientId();
@@ -227,9 +271,12 @@ public class CrawlerWebSocketHandler {
             // 更新客户端网址
             webSocketService.updateClientUrl(clientId, currentUrl);
 
-            System.out.println("客户端 " + clientId + " 网址更新为: " + currentUrl);
+            LogUtils.logInfo("客户端 " + clientId + " 网址更新为: " + currentUrl);
+            LogUtils.logMethodExit(this.getClass().getSimpleName(), "handleUrlChange", "URL updated");
         } catch (Exception e) {
-            e.printStackTrace();
+            LogUtils.logError("处理网址变化时发生异常", e);
+        } finally {
+            LogUtils.clearMDC(); // 清理MDC
         }
     }
 
@@ -237,6 +284,9 @@ public class CrawlerWebSocketHandler {
      * 处理爬取结果
      */
     private void handleCrawlResult(MessageInfo msgInfo) {
+        LogUtils.generateRequestId(); // 生成请求ID
+        LogUtils.logMethodEntry(this.getClass().getSimpleName(), "handleCrawlResult", msgInfo.getClientId());
+        
         try {
             CrawlResultPayload payload = JSON.toJavaObject((JSON) JSON.toJSON(msgInfo.getPayload()), CrawlResultPayload.class);
             String clientId = msgInfo.getClientId();
@@ -247,9 +297,12 @@ public class CrawlerWebSocketHandler {
             // 保存爬取结果
             webSocketService.saveCrawlResult(taskId, clientId, crawlData, crawlStatus);
 
-            System.out.println("收到客户端 " + clientId + " 的爬取结果，任务ID: " + taskId);
+            LogUtils.logInfo("收到客户端 " + clientId + " 的爬取结果，任务ID: " + taskId);
+            LogUtils.logMethodExit(this.getClass().getSimpleName(), "handleCrawlResult", "Crawl result processed");
         } catch (Exception e) {
-            e.printStackTrace();
+            LogUtils.logError("处理爬取结果时发生异常", e);
+        } finally {
+            LogUtils.clearMDC(); // 清理MDC
         }
     }
 
@@ -257,6 +310,9 @@ public class CrawlerWebSocketHandler {
      * 处理空闲状态更新
      */
     private void handleIdleStatusUpdate(MessageInfo msgInfo) {
+        LogUtils.generateRequestId(); // 生成请求ID
+        LogUtils.logMethodEntry(this.getClass().getSimpleName(), "handleIdleStatusUpdate", msgInfo.getClientId());
+        
         try {
             IdleStatusUpdatePayload payload = JSON.toJavaObject((JSON) JSON.toJSON(msgInfo.getPayload()), IdleStatusUpdatePayload.class);
             String clientId = msgInfo.getClientId();
@@ -267,13 +323,16 @@ public class CrawlerWebSocketHandler {
             // 更新客户端空闲状态
             webSocketService.updateClientIdleStatus(clientId, isIdle);
 
-            System.out.println("客户端 " + clientId + " 空闲状态更新: " + isIdle + 
+            LogUtils.logInfo("客户端 " + clientId + " 空闲状态更新: " + isIdle + 
                              ", 空闲持续时间: " + (idleDuration != null ? idleDuration + "ms" : "N/A"));
 
             // 更新缓存
             clientCacheService.setClientIdleStatus(clientId, isIdle);
+            LogUtils.logMethodExit(this.getClass().getSimpleName(), "handleIdleStatusUpdate", "Idle status updated");
         } catch (Exception e) {
-            e.printStackTrace();
+            LogUtils.logError("处理空闲状态更新时发生异常", e);
+        } finally {
+            LogUtils.clearMDC(); // 清理MDC
         }
     }
 
@@ -281,31 +340,50 @@ public class CrawlerWebSocketHandler {
      * 处理心跳消息
      */
     private void handleHeartbeat(MessageInfo msgInfo) {
-        String clientId = msgInfo.getClientId();
-        Long timestamp = msgInfo.getTimestamp();
+        LogUtils.generateRequestId(); // 生成请求ID
+        LogUtils.logMethodEntry(this.getClass().getSimpleName(), "handleHeartbeat", msgInfo.getClientId());
         
-        // 更新心跳时间到缓存
-        webSocketService.updateClientHeartbeat(clientId);
-        
-        System.out.println("收到客户端 " + clientId + " 的心跳，时间戳: " + new Date(timestamp));
+        try {
+            String clientId = msgInfo.getClientId();
+            Long timestamp = msgInfo.getTimestamp();
+            
+            // 更新心跳时间到缓存
+            webSocketService.updateClientHeartbeat(clientId);
+            
+            LogUtils.logInfo("收到客户端 " + clientId + " 的心跳，时间戳: " + new Date(timestamp));
+            LogUtils.logMethodExit(this.getClass().getSimpleName(), "handleHeartbeat", "Heartbeat processed");
+        } finally {
+            LogUtils.clearMDC(); // 清理MDC
+        }
     }
 
     /**
      * 处理Pong回应
      */
     private void handlePong(MessageInfo msgInfo) {
-        String clientId = msgInfo.getClientId();
-        Long timestamp = msgInfo.getTimestamp();
-        PongPayload payload = JSON.toJavaObject((JSON) JSON.toJSON(msgInfo.getPayload()), PongPayload.class);
+        LogUtils.generateRequestId(); // 生成请求ID
+        LogUtils.logMethodEntry(this.getClass().getSimpleName(), "handlePong", msgInfo.getClientId());
         
-        System.out.println("收到客户端 " + clientId + " 的Pong回应，请求ID: " + payload.getRequestId() + 
-                         "，时间戳: " + new Date(timestamp));
+        try {
+            String clientId = msgInfo.getClientId();
+            Long timestamp = msgInfo.getTimestamp();
+            PongPayload payload = JSON.toJavaObject((JSON) JSON.toJSON(msgInfo.getPayload()), PongPayload.class);
+            
+            LogUtils.logInfo("收到客户端 " + clientId + " 的Pong回应，请求ID: " + payload.getRequestId() + 
+                             "，时间戳: " + new Date(timestamp));
+            LogUtils.logMethodExit(this.getClass().getSimpleName(), "handlePong", "Pong processed");
+        } finally {
+            LogUtils.clearMDC(); // 清理MDC
+        }
     }
 
     /**
      * 处理脚本执行响应
      */
     private void handleExecuteScriptResponse(MessageInfo msgInfo) {
+        LogUtils.generateRequestId(); // 生成请求ID
+        LogUtils.logMethodEntry(this.getClass().getSimpleName(), "handleExecuteScriptResponse", msgInfo.getClientId());
+        
         try {
             ExecuteScriptResponsePayload payload = JSON.toJavaObject((JSON) JSON.toJSON(msgInfo.getPayload()), ExecuteScriptResponsePayload.class);
             String clientId = msgInfo.getClientId();
@@ -317,14 +395,17 @@ public class CrawlerWebSocketHandler {
             // 保存执行结果
             webSocketService.saveCrawlResult(taskId, clientId, result, status);
 
-            System.out.println("收到客户端 " + clientId + " 的脚本执行响应，任务ID: " + taskId + "，状态: " + status);
+            LogUtils.logInfo("收到客户端 " + clientId + " 的脚本执行响应，任务ID: " + taskId + "，状态: " + status);
 
             // 如果有错误，打印错误信息
             if ("error".equals(status) && error != null) {
-                System.err.println("脚本执行错误: " + error);
+                LogUtils.logError("脚本执行错误: " + error, null);
             }
+            LogUtils.logMethodExit(this.getClass().getSimpleName(), "handleExecuteScriptResponse", "Script response processed");
         } catch (Exception e) {
-            e.printStackTrace();
+            LogUtils.logError("处理脚本执行响应时发生异常", e);
+        } finally {
+            LogUtils.clearMDC(); // 清理MDC
         }
     }
 
@@ -332,10 +413,13 @@ public class CrawlerWebSocketHandler {
      * 批量下发脚本到客户端
      */
     public void sendScriptsToClient(String clientId, String pushType) {
+        LogUtils.generateRequestId(); // 生成请求ID
+        LogUtils.logMethodEntry(this.getClass().getSimpleName(), "sendScriptsToClient", clientId);
+        
         try {
             Session session = sessionMap.get(clientId);
             if (session == null) {
-                System.out.println("客户端 " + clientId + " 不在线，无法下发脚本");
+                LogUtils.logInfo("客户端 " + clientId + " 不在线，无法下发脚本");
                 return;
             }
 
@@ -350,8 +434,12 @@ public class CrawlerWebSocketHandler {
             scriptMsg.setTimestamp(System.currentTimeMillis());
 
             sendMessage(session, JSON.toJSONString(scriptMsg));
+            LogUtils.logInfo("已向客户端 " + clientId + " 下发 " + scripts.size() + " 个脚本");
+            LogUtils.logMethodExit(this.getClass().getSimpleName(), "sendScriptsToClient", "Scripts sent");
         } catch (Exception e) {
-            e.printStackTrace();
+            LogUtils.logError("向客户端下发脚本时发生异常", e);
+        } finally {
+            LogUtils.clearMDC(); // 清理MDC
         }
     }
 
@@ -359,10 +447,13 @@ public class CrawlerWebSocketHandler {
      * 定向下发脚本到指定客户端
      */
     public void sendDesignatedScriptsToClient(String clientId, List<String> scriptIds) {
+        LogUtils.generateRequestId(); // 生成请求ID
+        LogUtils.logMethodEntry(this.getClass().getSimpleName(), "sendDesignatedScriptsToClient", clientId);
+        
         try {
             Session session = sessionMap.get(clientId);
             if (session == null) {
-                System.out.println("客户端 " + clientId + " 不在线，无法定向下发脚本");
+                LogUtils.logInfo("客户端 " + clientId + " 不在线，无法定向下发脚本");
                 return;
             }
 
@@ -377,8 +468,12 @@ public class CrawlerWebSocketHandler {
             scriptMsg.setTimestamp(System.currentTimeMillis());
 
             sendMessage(session, JSON.toJSONString(scriptMsg));
+            LogUtils.logInfo("已向客户端 " + clientId + " 定向下發 " + scripts.size() + " 个脚本");
+            LogUtils.logMethodExit(this.getClass().getSimpleName(), "sendDesignatedScriptsToClient", "Designated scripts sent");
         } catch (Exception e) {
-            e.printStackTrace();
+            LogUtils.logError("向客户端定向下发脚本时发生异常", e);
+        } finally {
+            LogUtils.clearMDC(); // 清理MDC
         }
     }
 
@@ -386,10 +481,13 @@ public class CrawlerWebSocketHandler {
      * 发送任务指令到客户端
      */
     public void sendTaskCommand(String clientId, String taskId, String scriptId, Boolean executeOnIdle) {
+        LogUtils.generateRequestId(); // 生成请求ID
+        LogUtils.logMethodEntry(this.getClass().getSimpleName(), "sendTaskCommand", clientId);
+        
         try {
             Session session = sessionMap.get(clientId);
             if (session == null) {
-                System.out.println("客户端 " + clientId + " 不在线，无法发送任务指令");
+                LogUtils.logInfo("客户端 " + clientId + " 不在线，无法发送任务指令");
                 return;
             }
 
@@ -401,8 +499,12 @@ public class CrawlerWebSocketHandler {
             taskMsg.setTimestamp(System.currentTimeMillis());
 
             sendMessage(session, JSON.toJSONString(taskMsg));
+            LogUtils.logInfo("已向客户端 " + clientId + " 发送任务指令，任务ID: " + taskId);
+            LogUtils.logMethodExit(this.getClass().getSimpleName(), "sendTaskCommand", "Task command sent");
         } catch (Exception e) {
-            e.printStackTrace();
+            LogUtils.logError("向客户端发送任务指令时发生异常", e);
+        } finally {
+            LogUtils.clearMDC(); // 清理MDC
         }
     }
 
@@ -410,10 +512,13 @@ public class CrawlerWebSocketHandler {
      * 发送脚本执行命令到客户端
      */
     public void sendExecuteScriptCommand(String clientId, String taskId, String scriptId, String scriptContent) {
+        LogUtils.generateRequestId(); // 生成请求ID
+        LogUtils.logMethodEntry(this.getClass().getSimpleName(), "sendExecuteScriptCommand", clientId);
+        
         try {
             Session session = sessionMap.get(clientId);
             if (session == null) {
-                System.out.println("客户端 " + clientId + " 不在线，无法发送脚本执行命令");
+                LogUtils.logInfo("客户端 " + clientId + " 不在线，无法发送脚本执行命令");
                 return;
             }
 
@@ -425,8 +530,12 @@ public class CrawlerWebSocketHandler {
             scriptMsg.setTimestamp(System.currentTimeMillis());
 
             sendMessage(session, JSON.toJSONString(scriptMsg));
+            LogUtils.logInfo("已向客户端 " + clientId + " 发送脚本执行命令，任务ID: " + taskId);
+            LogUtils.logMethodExit(this.getClass().getSimpleName(), "sendExecuteScriptCommand", "Execute script command sent");
         } catch (Exception e) {
-            e.printStackTrace();
+            LogUtils.logError("向客户端发送脚本执行命令时发生异常", e);
+        } finally {
+            LogUtils.clearMDC(); // 清理MDC
         }
     }
 
@@ -437,9 +546,12 @@ public class CrawlerWebSocketHandler {
         try {
             if (session.isOpen()) {
                 session.getBasicRemote().sendText(message);
+                logger.debug("发送消息到会话: {}", session.getId());
+            } else {
+                logger.warn("尝试向已关闭的会话发送消息: {}", session.getId());
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error("发送消息时发生IO异常: {}", e.getMessage(), e);
         }
     }
 
@@ -455,6 +567,7 @@ public class CrawlerWebSocketHandler {
      * 获取在线客户端数量
      */
     public static int getOnlineCount() {
+        logger.debug("当前在线客户端数量: {}", sessionMap.size());
         return sessionMap.size();
     }
 
@@ -462,8 +575,7 @@ public class CrawlerWebSocketHandler {
      * 获取指定客户端的会话
      */
     public static Session getClientSession(String clientId) {
-        System.out.println("获取客户端 " + clientId + " 的会话");
-        System.out.println("会话映射: " + sessionMap);
+        logger.debug("获取客户端 {} 的会话", clientId);
         return sessionMap.get(clientId);
     }
 
@@ -472,6 +584,7 @@ public class CrawlerWebSocketHandler {
      */
     public static boolean isClientOnline(String clientId) {
         Session session = sessionMap.get(clientId);
+        logger.debug("客户端 {} 在线状态: {}", clientId, session != null && session.isOpen());
         return session != null && session.isOpen();
     }
 
@@ -479,6 +592,7 @@ public class CrawlerWebSocketHandler {
      * 获取会话映射
      */
     public static Map<String, Session> getSessionMap() {
+        logger.debug("获取会话映射，当前连接数: {}", sessionMap.size());
         return sessionMap;
     }
 
