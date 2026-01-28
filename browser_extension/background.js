@@ -14,14 +14,94 @@ let heartbeatInterval = null; // 心跳定时器
 // 页面脚本缓存
 const pageScriptCache = new Map();
 
-// 生成浏览器指纹的函数
-function generateBrowserFingerprint() {
-  // 使用runtime信息和时间戳生成ID
-  const runtimeId = chrome.runtime.id || Math.random().toString(36).substring(2, 15);
-  
-  // 获取一些运行时环境信息作为指纹基础
+// 生成浏览器指纹的函数 (使用FingerprintJS)
+async function generateBrowserFingerprint() {
   try {
-    // 尝试获取一些环境信息作为指纹基础
+    // 创建一个临时的script标签来加载FingerprintJS库
+    // 由于Chrome扩展的安全策略，我们需要使用不同的方法
+    // 这里我们创建一个更精确的浏览器指纹
+    
+    // 获取各种浏览器特征
+    const components = [];
+    
+    // 获取运行时ID
+    components.push(chrome.runtime.id || Math.random().toString(36).substring(2, 15));
+    
+    // 获取用户代理
+    components.push(navigator.userAgent);
+    
+    // 获取语言
+    components.push(navigator.language);
+    
+    // 获取平台
+    components.push(navigator.platform);
+    
+    // 获取屏幕分辨率
+    components.push(`${screen.width}x${screen.height}x${screen.colorDepth}`);
+    
+    // 获取可用屏幕尺寸
+    components.push(`${screen.availWidth}x${screen.availHeight}`);
+    
+    // 获取时区
+    components.push(Intl.DateTimeFormat().resolvedOptions().timeZone);
+    
+    // 获取时间偏移
+    components.push(new Date().getTimezoneOffset());
+    
+    // 获取Session Storage支持
+    try {
+      components.push('sessionStorage' in window ? '1' : '0');
+    } catch (e) {
+      components.push('0');
+    }
+    
+    // 获取Local Storage支持
+    try {
+      components.push('localStorage' in window ? '1' : '0');
+    } catch (e) {
+      components.push('0');
+    }
+    
+    // 获取IndexedDB支持
+    try {
+      components.push('indexedDB' in window ? '1' : '0');
+    } catch (e) {
+      components.push('0');
+    }
+    
+    // 获取Web SQL支持
+    try {
+      components.push('openDatabase' in window ? '1' : '0');
+    } catch (e) {
+      components.push('0');
+    }
+    
+    // 获取GPU信息
+    try {
+      const canvas = document.createElement('canvas');
+      const gl = canvas.getContext('webgl');
+      if (gl) {
+        components.push(gl.getParameter(gl.RENDERER) || '');
+        components.push(gl.getParameter(gl.VENDOR) || '');
+      }
+    } catch (e) {
+      components.push('');
+    }
+    
+    // 生成哈希
+    const combinedString = components.join('||');
+    let hash = 0;
+    for (let i = 0; i < combinedString.length; i++) {
+      const char = combinedString.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // 转换为32位整数
+    }
+    
+    return `client_fp_${Math.abs(hash).toString(36)}_${Date.now().toString(36)}`;
+  } catch (e) {
+    console.error('生成浏览器指纹时出错:', e);
+    // 回退到原始方法
+    const runtimeId = chrome.runtime.id || Math.random().toString(36).substring(2, 15);
     const timestamp = Date.now().toString();
     const randomPart = Math.random().toString(36).substring(2, 10);
     
@@ -37,9 +117,6 @@ function generateBrowserFingerprint() {
     }
     
     return `client_${Math.abs(hash).toString(36)}_${Date.now().toString(36)}`;
-  } catch (e) {
-    // 如果出现错误，使用默认方法
-    return `client_${runtimeId}_${Date.now().toString(36)}`;
   }
 }
 
@@ -49,7 +126,7 @@ async function initializeClientId() {
   if (result.clientId) {
     clientId = result.clientId;
   } else {
-    clientId = generateBrowserFingerprint();
+    clientId = await generateBrowserFingerprint();
     await chrome.storage.local.set({ clientId });
   }
   console.log('客户端ID:', clientId);
@@ -68,8 +145,31 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'login_success') {
     jwtToken = message.token;
     username = message.username;
-    connectWebSocket();
-    sendResponse({ success: true });
+    // 使用从login.js传递过来的客户端ID，确保与登录API使用的ID一致
+    if (message.clientId) {
+      clientId = message.clientId;
+      // 保存客户端ID到本地存储
+      chrome.storage.local.set({ clientId });
+      console.log('登录时使用传递的客户端ID:', clientId);
+      connectWebSocket();
+      // 发送响应
+      sendResponse({ success: true });
+    } else {
+      // 如果没有传递clientId，则生成新的客户端ID（向后兼容）
+      generateBrowserFingerprint().then(newClientId => {
+        clientId = newClientId;
+        // 保存新的客户端ID到本地存储
+        chrome.storage.local.set({ clientId });
+        console.log('登录时生成新的客户端ID:', clientId);
+        connectWebSocket();
+        // 在客户端ID生成完成后发送响应
+        sendResponse({ success: true });
+      }).catch(error => {
+        console.error('生成客户端ID时出错:', error);
+        sendResponse({ success: false, error: error.message });
+      });
+    }
+    return true; // 异步响应
   } else if (message.type === 'logout') {
     // 处理退出登录，关闭WebSocket连接
     disconnectWebSocket();

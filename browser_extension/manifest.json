@@ -17,7 +17,7 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.js"]
+      "js": ["lib/fingerprintjs2.min.js", "content.js"]
     }
   ],
   "action": {
@@ -31,8 +31,11 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["task-manager.html"],
+      "resources": ["task-manager.html", "lib/*"],
       "matches": ["<all_urls>"]
     }
-  ]
+  ],
+  "externally_connectable": {
+    "matches": ["<all_urls>"]
+  }
 }

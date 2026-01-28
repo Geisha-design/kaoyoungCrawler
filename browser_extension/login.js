@@ -1,3 +1,105 @@
+// 生成浏览器指纹的函数 (与background.js中相同)
+async function generateBrowserFingerprint() {
+  try {
+    // 获取各种浏览器特征
+    const components = [];
+    
+    // 获取运行时ID
+    components.push(chrome.runtime.id || Math.random().toString(36).substring(2, 15));
+    
+    // 获取用户代理
+    components.push(navigator.userAgent);
+    
+    // 获取语言
+    components.push(navigator.language);
+    
+    // 获取平台
+    components.push(navigator.platform);
+    
+    // 获取屏幕分辨率
+    components.push(`${screen.width}x${screen.height}x${screen.colorDepth}`);
+    
+    // 获取可用屏幕尺寸
+    components.push(`${screen.availWidth}x${screen.availHeight}`);
+    
+    // 获取时区
+    components.push(Intl.DateTimeFormat().resolvedOptions().timeZone);
+    
+    // 获取时间偏移
+    components.push(new Date().getTimezoneOffset());
+    
+    // 获取Session Storage支持
+    try {
+      components.push('sessionStorage' in window ? '1' : '0');
+    } catch (e) {
+      components.push('0');
+    }
+    
+    // 获取Local Storage支持
+    try {
+      components.push('localStorage' in window ? '1' : '0');
+    } catch (e) {
+      components.push('0');
+    }
+    
+    // 获取IndexedDB支持
+    try {
+      components.push('indexedDB' in window ? '1' : '0');
+    } catch (e) {
+      components.push('0');
+    }
+    
+    // 获取Web SQL支持
+    try {
+      components.push('openDatabase' in window ? '1' : '0');
+    } catch (e) {
+      components.push('0');
+    }
+    
+    // 获取GPU信息
+    try {
+      const canvas = document.createElement('canvas');
+      const gl = canvas.getContext('webgl');
+      if (gl) {
+        components.push(gl.getParameter(gl.RENDERER) || '');
+        components.push(gl.getParameter(gl.VENDOR) || '');
+      }
+    } catch (e) {
+      components.push('');
+    }
+    
+    // 生成哈希
+    const combinedString = components.join('||');
+    let hash = 0;
+    for (let i = 0; i < combinedString.length; i++) {
+      const char = combinedString.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // 转换为32位整数
+    }
+    
+    return `client_fp_${Math.abs(hash).toString(36)}_${Date.now().toString(36)}`;
+  } catch (e) {
+    console.error('生成浏览器指纹时出错:', e);
+    // 回退到原始方法
+    const runtimeId = chrome.runtime.id || Math.random().toString(36).substring(2, 15);
+    const timestamp = Date.now().toString();
+    const randomPart = Math.random().toString(36).substring(2, 10);
+    
+    // 创建一个组合字符串
+    const fingerprintBase = `${runtimeId}_${timestamp}_${randomPart}`;
+    
+    // 生成哈希值
+    let hash = 0;
+    for (let i = 0; i < fingerprintBase.length; i++) {
+      const char = fingerprintBase.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // 转换为32位整数
+    }
+    
+    return `client_${Math.abs(hash).toString(36)}_${Date.now().toString(36)}`;
+  }
+}
+
 // 定义全局函数，以便在任何地方都可以调用
 window.getClientId = async function() {
   return new Promise((resolve, reject) => {
@@ -9,6 +111,11 @@ window.getClientId = async function() {
       }
     });
   });
+};
+
+// 定义获取新客户端ID的全局函数，用于登录时生成全新ID
+window.getNewClientId = async function() {
+  return await generateBrowserFingerprint();
 };
 
 // 登录逻辑
@@ -45,9 +152,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     try {
-      // 获取浏览器指纹生成的客户端ID
-      const clientInfo = await window.getClientId();
-      const extensionId = clientInfo.clientId;
+      // 生成新的客户端ID用于本次登录
+      const extensionId = await window.getNewClientId();
       
       // 调用后端登录接口
       const response = await fetch('http://localhost:8090/smarteCrawler/api/login', {
@@ -58,7 +164,7 @@ document.addEventListener('DOMContentLoaded', function() {
         body: JSON.stringify({
           username: username,
           password: password,
-          clientId: extensionId  // 发送浏览器指纹生成的客户端ID
+          clientId: extensionId  // 发送新生成的客户端ID
         })
       });
       
@@ -74,8 +180,8 @@ document.addEventListener('DOMContentLoaded', function() {
           statusDiv.textContent = '登录成功，正在连接WebSocket...';
           statusDiv.className = 'connected';
           
-          // 通知background脚本开始WebSocket连接
-          chrome.runtime.sendMessage({ type: 'login_success', token: result.data.token, username: username });
+          // 通知background脚本开始WebSocket连接，传递用于登录的客户端ID
+          chrome.runtime.sendMessage({ type: 'login_success', token: result.data.token, username: username, clientId: extensionId });
           
           // 监听连接状态更新
           setTimeout(checkWebSocketConnection, 1000);
@@ -116,9 +222,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     try {
-      // 获取浏览器指纹生成的客户端ID
-      const clientInfo = await window.getClientId();
-      const extensionId = clientInfo.clientId;
+      // 生成新的客户端ID用于本次注册
+      const extensionId = await window.getNewClientId();
       
       // 调用后端注册接口
       const response = await fetch('http://localhost:8090/smarteCrawler/api/register', {
@@ -129,13 +234,20 @@ document.addEventListener('DOMContentLoaded', function() {
         body: JSON.stringify({
           username: username,
           password: password,
-          clientId: extensionId  // 发送浏览器指纹生成的客户端ID
+          clientId: extensionId  // 发送新生成的客户端ID
         })
       });
       
       const result = await response.json();
       
       if (result.code === 200) {
+        // 保存新生成的客户端ID到本地存储
+        chrome.storage.local.set({
+          clientId: extensionId  // 保存本次注册使用的客户端ID
+        }, function() {
+          console.log('保存注册使用的客户端ID:', extensionId);
+        });
+        
         regStatusDiv.textContent = '注册成功，请登录';
         regStatusDiv.className = 'connected';
         
@@ -210,7 +322,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const logoutBtn = document.getElementById('logoutBtn');
   logoutBtn.addEventListener('click', async function() {
     try {
-      // 获取客户端ID
+      // 获取当前会话的客户端ID（使用现有的ID进行退出操作）
       const clientInfo = await window.getClientId();
       const extensionId = clientInfo.clientId;
       
