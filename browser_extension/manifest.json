@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "爬虫助手",
+  "name": "九爪鱼",
   "version": "1.0.0",
   "description": "浏览器爬虫助手客户端，与后端服务通过WebSocket通信",
   "permissions": [
@@ -22,12 +22,12 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "爬虫助手"
+    "default_title": "九爪鱼"
   },
   "icons": {
-    "16": "icons/icon16.png",
-    "48": "icons/icon48.png",
-    "128": "icons/icon128.png"
+    "16": "icons/icon_16.png",
+    "48": "icons/icon_48.png",
+    "128": "icons/icon_128.png"
   },
   "web_accessible_resources": [
     {

@@ -1,0 +1,16 @@
+${AnsiColor.BRIGHT_BLUE}
+╔══════════════════════════════════════════════════════════════╗
+║                    ${AnsiColor.BRIGHT_YELLOW}KAOUYOUNG CRAWLER SYSTEM${AnsiColor.BRIGHT_BLUE}                    ║
+║                                                              ║
+║   ██████╗ ██╗   ██╗██████╗  ██████╗ ███████╗███████╗██████╗  ║
+║  ██╔═══██╗██║   ██║██╔══██╗██╔════╝ ██╔════╝██╔════╝██╔══██╗ ║
+║  ██║   ██║██║   ██║██████╔╝██║  ███╗█████╗  █████╗  ██████╔╝ ║
+║  ██║   ██║██║   ██║██╔══██╗██║   ██║██╔══╝  ██╔══╝  ██╔══██╗ ║
+║  ╚██████╔╝╚██████╔╝██████╔╝╚██████╔╝███████╗███████╗██║  ██║ ║
+║   ╚═════╝  ╚═════╝ ╚═════╝  ╚═════╝ ╚══════╝╚══════╝╚═╝  ╚═╝ ║
+║                                                              ║
+║                ${AnsiColor.BRIGHT_GREEN}Version:${AnsiColor.RESET} ${application.version}                   ║
+║                ${AnsiColor.BRIGHT_GREEN}Spring Boot:${spring-boot.version}              ║
+║                ${AnsiColor.BRIGHT_CYAN}Developed with ❤️齐雨争  for高效爬虫系统${AnsiColor.BRIGHT_BLUE}           ║
+╚══════════════════════════════════════════════════════════════╝
+${AnsiColor.DEFAULT}

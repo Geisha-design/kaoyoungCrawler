@@ -1310,8 +1310,8 @@ function notifyIdleStatusToBackend(isIdle) {
 // 更新插件图标
 function updateIcon(status) {
   const iconPath = status === 'connected' ? 
-    { '16': 'icons/icon16.png', '48': 'icons/icon48.png', '128': 'icons/icon128.png' } :
-    { '16': 'icons/icon16.png', '48': 'icons/icon48.png', '128': 'icons/icon128.png' };
+    { '16': 'icons/iconb_16.png', '48': 'icons/iconb_16.png', '128': 'icons/iconb_16.png' } :
+    { '16': 'icons/icon_16.png', '48': 'icons/icon_16.png', '128': 'icons/icon_16.png' };
   
   // 对于简单的连接状态指示，我们可以改变图标的样式
   // 但由于我们没有不同的连接/断开图标，这里只是记录状态
