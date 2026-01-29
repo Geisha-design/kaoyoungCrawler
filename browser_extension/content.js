@@ -188,11 +188,15 @@ function showNotification(message, scripts) {
   // 添加执行匹配脚本的函数到全局作用域
   window.executeMatchingScripts = function() {
     scripts.forEach(script => {
-      chrome.runtime.sendMessage({
-        type: 'execute_script',
-        scriptId: script.scriptId,
-        scriptContent: script.scriptContent
-      });
+      try {
+        chrome.runtime.sendMessage({
+          type: 'execute_script',
+          scriptId: script.scriptId,
+          scriptContent: script.scriptContent
+        });
+      } catch (error) {
+        console.error('发送执行脚本消息失败:', error);
+      }
     });
     notification.remove();
   };

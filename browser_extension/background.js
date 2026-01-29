@@ -176,7 +176,44 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // 异步响应
   } else if (message.type === 'execute_script') {
     // 执行特定脚本
-    executeScriptOnActiveTab(message.scriptId, message.scriptContent);
+    // 确保Chrome API已准备就绪后再执行
+    if (typeof chrome.tabs.query === 'function' && 
+        typeof chrome.tabs.executeScript === 'function' && 
+        typeof chrome.tabs.sendMessage === 'function') {
+      executeScriptOnActiveTab(message.scriptId, message.scriptContent)
+        .catch(error => {
+          console.error('执行脚本时出错:', error);
+        });
+    } else {
+      console.error('Chrome API 未完全加载，延迟执行脚本');
+      // 实现延迟重试机制
+      const maxRetries = 5;
+      let retryCount = 0;
+      
+      const attemptExecution = () => {
+        retryCount++;
+        if (typeof chrome.tabs.query === 'function' && 
+            typeof chrome.tabs.executeScript === 'function' && 
+            typeof chrome.tabs.sendMessage === 'function') {
+          console.log(`Chrome API 在第 ${retryCount} 次重试后可用，执行脚本`);
+          executeScriptOnActiveTab(message.scriptId, message.scriptContent)
+            .catch(error => {
+              console.error('执行脚本时出错:', error);
+            });
+        } else if (retryCount < maxRetries) {
+          console.log(`Chrome API 仍不可用，第 ${retryCount} 次重试，等待 1 秒`);
+          setTimeout(attemptExecution, 1000);
+        } else {
+          console.error('Chrome API 在最大重试次数后仍不可用');
+          // 发送错误响应
+          if (message.scriptId) {
+            sendCrawlResult(null, { error: 'Chrome API not available for script execution after retries' }, 'fail');
+          }
+        }
+      };
+      
+      setTimeout(attemptExecution, 1000); // 初始延迟1秒后重试
+    }
     sendResponse({ success: true });
   } else if (message.type === 'get_status') {
     sendResponse({ 
@@ -201,14 +238,28 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse({ tasks: scheduledTasks });
   } else if (message.type === 'set_idle_threshold') {
     // 设置空闲阈值并通知content script
-    chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-      if (tabs[0]) {
-        chrome.tabs.sendMessage(tabs[0].id, {
-          type: 'set_idle_threshold',
-          threshold: message.threshold
+    try {
+      // 检查chrome.tabs.query是否可用
+      if (typeof chrome.tabs.query === 'function') {
+        chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+          if (tabs && tabs[0]) {
+            // 检查chrome.tabs.sendMessage是否可用
+            if (typeof chrome.tabs.sendMessage === 'function') {
+              chrome.tabs.sendMessage(tabs[0].id, {
+                type: 'set_idle_threshold',
+                threshold: message.threshold
+              });
+            } else {
+              console.error('chrome.tabs.sendMessage 不可用');
+            }
+          }
         });
+      } else {
+        console.error('chrome.tabs.query 不可用');
       }
-    });
+    } catch (error) {
+      console.error('设置空闲阈值时出错:', error);
+    }
     sendResponse({ success: true });
   } else if (message.type === 'check_idle_status') {
     // 检查空闲状态
@@ -295,16 +346,26 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 
 // 监听标签页激活事件
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
-  const tab = await chrome.tabs.get(activeInfo.tabId);
-  if (tab.url) {
-    activeTabUrl = tab.url;
-    // 同步当前网址到服务端
-    if (isConnected && clientId) {
-      sendUrlChange(tab.url);
+  try {
+    // 检查chrome.tabs.get是否可用
+    if (typeof chrome.tabs.get !== 'function') {
+      console.error('chrome.tabs.get 不可用');
+      return;
     }
     
-    // 检查是否匹配脚本域名
-    checkDomainScriptMatch(tab.url);
+    const tab = await chrome.tabs.get(activeInfo.tabId);
+    if (tab && tab.url) {
+      activeTabUrl = tab.url;
+      // 同步当前网址到服务端
+      if (isConnected && clientId) {
+        sendUrlChange(tab.url);
+      }
+      
+      // 检查是否匹配脚本域名
+      checkDomainScriptMatch(tab.url);
+    }
+  } catch (error) {
+    console.error('获取标签页信息失败:', error);
   }
 });
 
@@ -446,7 +507,7 @@ function sendHeartbeat() {
 }
 
 // 处理WebSocket消息
-function handleMessage(message) {
+async function handleMessage(message) {
   console.log('收到消息:', message);
   
   switch (message.type) {
@@ -476,7 +537,38 @@ function handleMessage(message) {
     // case 'task_command':
     case 'execute_script':
       // 处理任务指令
-      handleTaskCommand(message.payload);
+      // 确保Chrome API已准备就绪后再执行
+      if (typeof chrome.tabs.query === 'function' && 
+          typeof chrome.tabs.executeScript === 'function' && 
+          typeof chrome.tabs.sendMessage === 'function') {
+        await handleTaskCommand(message.payload);
+      } else {
+        console.error('Chrome API 未完全加载，延迟执行任务指令');
+        // 实现延迟重试机制
+        const maxRetries = 5;
+        let retryCount = 0;
+        
+        const attemptExecution = () => {
+          retryCount++;
+          if (typeof chrome.tabs.query === 'function' && 
+              typeof chrome.tabs.executeScript === 'function' && 
+              typeof chrome.tabs.sendMessage === 'function') {
+            console.log(`Chrome API 在第 ${retryCount} 次重试后可用，执行任务指令`);
+            handleTaskCommand(message.payload);
+          } else if (retryCount < maxRetries) {
+            console.log(`Chrome API 仍不可用，第 ${retryCount} 次重试，等待 1 秒`);
+            setTimeout(attemptExecution, 1000);
+          } else {
+            console.error('Chrome API 在最大重试次数后仍不可用');
+            // 发送错误响应
+            if (message.payload && message.payload.taskId) {
+              sendCrawlResult(message.payload.taskId, { error: 'Chrome API not available for task execution after retries' }, 'fail');
+            }
+          }
+        };
+        
+        setTimeout(attemptExecution, 1000); // 初始延迟1秒后重试
+      }
       break;
       
     case 'scheduled_task_config':
@@ -580,17 +672,76 @@ function sendRegisterMessage() {
     return;
   }
   
-  // 获取当前活动标签页的URL
-  chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-    let currentUrl = tabs[0] ? tabs[0].url : '';
+  // 检查chrome.tabs.query是否可用
+  if (typeof chrome.tabs.query !== 'function') {
+    console.error('chrome.tabs.query 不可用');
     
-    // 如果没有活动标签页，尝试获取任意标签页的URL
-    if (!currentUrl) {
-      chrome.tabs.query({}, function(allTabs) {
-        if (allTabs && allTabs.length > 0) {
-          currentUrl = allTabs[0].url || '';
+    // 发送默认注册消息
+    const registerMessage = {
+      type: 'register',
+      payload: {
+        username: username,
+        currentUrl: '',
+        supportTaskTypes: 'product_crawl,article_crawl,idle_task', // 添加空闲任务类型
+        idleStatus: clientIdleStatus // 发送当前空闲状态
+      },
+      clientId: clientId,
+      timestamp: Date.now()
+    };
+    
+    ws.send(JSON.stringify(registerMessage));
+    return;
+  }
+  
+  // 获取当前活动标签页的URL
+  try {
+    chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+      let currentUrl = tabs && tabs[0] ? tabs[0].url : '';
+      
+      // 如果没有活动标签页，尝试获取任意标签页的URL
+      if (!currentUrl) {
+        // 再次检查chrome.tabs.query是否可用
+        if (typeof chrome.tabs.query === 'function') {
+          chrome.tabs.query({}, function(allTabs) {
+            if (allTabs && allTabs.length > 0) {
+              currentUrl = allTabs[0].url || '';
+            }
+            
+            activeTabUrl = currentUrl;
+            
+            const registerMessage = {
+              type: 'register',
+              payload: {
+                username: username,
+                currentUrl: currentUrl,
+                supportTaskTypes: 'product_crawl,article_crawl,idle_task', // 添加空闲任务类型
+                idleStatus: clientIdleStatus // 发送当前空闲状态
+              },
+              clientId: clientId,
+              timestamp: Date.now()
+            };
+            
+            ws.send(JSON.stringify(registerMessage));
+          });
+        } else {
+          console.error('chrome.tabs.query 在嵌套调用中不可用');
+          
+          // 发送默认注册消息
+          const registerMessage = {
+            type: 'register',
+            payload: {
+              username: username,
+              currentUrl: '',
+              supportTaskTypes: 'product_crawl,article_crawl,idle_task', // 添加空闲任务类型
+              idleStatus: clientIdleStatus // 发送当前空闲状态
+            },
+            clientId: clientId,
+            timestamp: Date.now()
+          };
+          
+          ws.send(JSON.stringify(registerMessage));
         }
-        
+      } else {
         activeTabUrl = currentUrl;
         
         const registerMessage = {
@@ -606,25 +757,26 @@ function sendRegisterMessage() {
         };
         
         ws.send(JSON.stringify(registerMessage));
-      });
-    } else {
-      activeTabUrl = currentUrl;
-      
-      const registerMessage = {
-        type: 'register',
-        payload: {
-          username: username,
-          currentUrl: currentUrl,
-          supportTaskTypes: 'product_crawl,article_crawl,idle_task', // 添加空闲任务类型
-          idleStatus: clientIdleStatus // 发送当前空闲状态
-        },
-        clientId: clientId,
-        timestamp: Date.now()
-      };
-      
-      ws.send(JSON.stringify(registerMessage));
-    }
-  });
+      }
+    });
+  } catch (error) {
+    console.error('查询标签页时出错:', error);
+    
+    // 发送默认注册消息
+    const registerMessage = {
+      type: 'register',
+      payload: {
+        username: username,
+        currentUrl: '',
+        supportTaskTypes: 'product_crawl,article_crawl,idle_task', // 添加空闲任务类型
+        idleStatus: clientIdleStatus // 发送当前空闲状态
+      },
+      clientId: clientId,
+      timestamp: Date.now()
+    };
+    
+    ws.send(JSON.stringify(registerMessage));
+  }
 }
 
 // 处理脚本推送
@@ -675,7 +827,51 @@ async function handleTaskCommand(payload) {
   
   // 在当前活动标签页执行脚本
   // 如果没有活动标签页，尝试获取所有标签页中的任意一个
-  executeScriptOnActiveTab(scriptId, script.scriptContent, taskId);
+  
+  // 确保Chrome API已准备就绪后再执行
+  if (typeof chrome.tabs.query === 'function' && 
+      typeof chrome.tabs.executeScript === 'function' && 
+      typeof chrome.tabs.sendMessage === 'function') {
+    try {
+      await executeScriptOnActiveTab(scriptId, script.scriptContent, taskId);
+    } catch (error) {
+      console.error('执行脚本时出错:', error);
+      if (taskId) {
+        sendCrawlResult(taskId, { error: error.message }, 'fail');
+      }
+    }
+  } else {
+    console.error('Chrome API 未完全加载，延迟执行脚本');
+    // 实现延迟重试机制
+    const maxRetries = 5;
+    let retryCount = 0;
+    
+    const attemptExecution = () => {
+      retryCount++;
+      if (typeof chrome.tabs.query === 'function' && 
+          typeof chrome.tabs.executeScript === 'function' && 
+          typeof chrome.tabs.sendMessage === 'function') {
+        console.log(`Chrome API 在第 ${retryCount} 次重试后可用，执行脚本`);
+        executeScriptOnActiveTab(scriptId, script.scriptContent, taskId)
+          .catch(error => {
+            console.error('执行脚本时出错:', error);
+            if (taskId) {
+              sendCrawlResult(taskId, { error: error.message }, 'fail');
+            }
+          });
+      } else if (retryCount < maxRetries) {
+        console.log(`Chrome API 仍不可用，第 ${retryCount} 次重试，等待 1 秒`);
+        setTimeout(attemptExecution, 1000);
+      } else {
+        console.error('Chrome API 在最大重试次数后仍不可用');
+        if (taskId) {
+          sendCrawlResult(taskId, { error: 'Chrome API not available for task execution after retries' }, 'fail');
+        }
+      }
+    };
+    
+    setTimeout(attemptExecution, 1000); // 初始延迟1秒后重试
+  }
 }
 
 // 在当前活动标签页执行脚本
@@ -729,33 +925,80 @@ async function executeScriptOnActiveTab(scriptId, scriptContent, taskId = null) 
     
     // 先检查content script是否已加载
     try {
-      const result = await chrome.tabs.executeScript(tab.id, {
-        code: 'typeof window.crawlerAssistantLoaded !== "undefined" && window.crawlerAssistantLoaded'
-      });
+      // 检查chrome.tabs.executeScript是否可用
+      if (typeof chrome.tabs.executeScript !== 'function') {
+        console.error('chrome.tabs.executeScript 不可用');
+        if (taskId) {
+          sendCrawlResult(taskId, { error: 'chrome.tabs.executeScript is not available in this context' }, 'fail');
+        }
+        return;
+      }
+      
+      let result;
+      try {
+        result = await chrome.tabs.executeScript(tab.id, {
+          code: 'typeof window.crawlerAssistantLoaded !== "undefined" && window.crawlerAssistantLoaded'
+        });
+      } catch (executeScriptError) {
+        console.error('执行 chrome.tabs.executeScript 时出错:', executeScriptError.message);
+        if (taskId) {
+          sendCrawlResult(taskId, { error: 'Failed to execute chrome.tabs.executeScript: ' + executeScriptError.message }, 'fail');
+        }
+        return;
+      }
       
       if (!result || result.length === 0 || !result[0]) {
         console.warn('content script未加载到标签页:', tab.id);
-        // 尝试注入一次
-        await chrome.tabs.executeScript(tab.id, {
-          file: 'content.js'
-        });
+        
+        try {
+          // 尝试注入一次
+          await chrome.tabs.executeScript(tab.id, {
+            file: 'content.js'
+          });
+        } catch (injectError) {
+          console.error('注入content script失败:', injectError.message);
+          if (taskId) {
+            sendCrawlResult(taskId, { error: 'Failed to inject content script: ' + injectError.message }, 'fail');
+          }
+          return;
+        }
         
         // 再次检查
-        const retryResult = await chrome.tabs.executeScript(tab.id, {
-          code: 'typeof window.crawlerAssistantLoaded !== "undefined" && window.crawlerAssistantLoaded'
-        });
-        
-        if (!retryResult || retryResult.length === 0 || !retryResult[0]) {
-          console.error('content script注入失败，无法执行脚本');
+        try {
+          const retryResult = await chrome.tabs.executeScript(tab.id, {
+            code: 'typeof window.crawlerAssistantLoaded !== "undefined" && window.crawlerAssistantLoaded'
+          });
+          
+          if (!retryResult || retryResult.length === 0 || !retryResult[0]) {
+            console.error('content script注入失败，无法执行脚本');
+            if (taskId) {
+              sendCrawlResult(taskId, { error: 'Content script not loaded in target tab' }, 'fail');
+            }
+            return;
+          }
+        } catch (retryError) {
+          console.error('再次检查content script时出错:', retryError.message);
           if (taskId) {
-            sendCrawlResult(taskId, { error: 'Content script not loaded in target tab' }, 'fail');
+            sendCrawlResult(taskId, { error: 'Failed to verify content script: ' + retryError.message }, 'fail');
           }
           return;
         }
       }
     } catch (checkError) {
-      console.warn('检查content script状态失败:', checkError.message);
-      // 继续尝试发送消息
+      console.error('检查content script状态失败:', checkError);
+      if (taskId) {
+        sendCrawlResult(taskId, { error: 'Failed to check content script status: ' + checkError.message }, 'fail');
+      }
+      return;
+    }
+    
+    // 检查chrome.tabs.sendMessage是否可用
+    if (typeof chrome.tabs.sendMessage !== 'function') {
+      console.error('chrome.tabs.sendMessage 不可用');
+      if (taskId) {
+        sendCrawlResult(taskId, { error: 'chrome.tabs.sendMessage is not available in this context' }, 'fail');
+      }
+      return;
     }
     
     try {
@@ -858,43 +1101,26 @@ function checkDomainScriptMatch(url) {
         if (regex.test(hostname)) {
           const matchedScripts = domainScriptMap[domainPattern];
           
+          // 检查chrome.tabs.query是否可用
+          if (typeof chrome.tabs.query !== 'function') {
+            console.error('chrome.tabs.query 不可用');
+            return;
+          }
+          
           // 发送匹配到的脚本到content script
-          chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-            if (tabs[0]) {
-              const tab = tabs[0];
-                  
-              // 检查是否是允许发送消息的页面
-              if (tab.url.startsWith('chrome://') || tab.url.startsWith('about:') || tab.url.startsWith('data:')) {
-                console.log('无法向内部页面发送域名匹配消息:', tab.url);
-                return;
-              }
-                  
-              try {
-                chrome.tabs.sendMessage(tab.id, {
-                  type: 'domain_script_matched',
-                  matchedScripts: matchedScripts,
-                  domain: hostname
-                }, function(response) {
-                  // 检查是否发送失败
-                  if (chrome.runtime.lastError) {
-                    console.log('发送域名匹配消息失败:', chrome.runtime.lastError.message);
-                  }
-                });
-              } catch (error) {
-                console.log('发送域名匹配消息异常:', error);
-              }
-            } else {
-              // 如果没有活动标签页，尝试获取任意标签页
-              chrome.tabs.query({}, function(allTabs) {
-                if (allTabs && allTabs.length > 0) {
-                  const tab = allTabs[0];
-                      
-                  // 检查是否是允许发送消息的页面
-                  if (tab.url.startsWith('chrome://') || tab.url.startsWith('about:') || tab.url.startsWith('data:')) {
-                    console.log('无法向内部页面发送域名匹配消息:', tab.url);
-                    return;
-                  }
-                      
+          try {
+            chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+              if (tabs && tabs[0]) {
+                const tab = tabs[0];
+                    
+                // 检查是否是允许发送消息的页面
+                if (tab.url.startsWith('chrome://') || tab.url.startsWith('about:') || tab.url.startsWith('data:')) {
+                  console.log('无法向内部页面发送域名匹配消息:', tab.url);
+                  return;
+                }
+                    
+                // 检查chrome.tabs.sendMessage是否可用
+                if (typeof chrome.tabs.sendMessage === 'function') {
                   try {
                     chrome.tabs.sendMessage(tab.id, {
                       type: 'domain_script_matched',
@@ -909,10 +1135,51 @@ function checkDomainScriptMatch(url) {
                   } catch (error) {
                     console.log('发送域名匹配消息异常:', error);
                   }
+                } else {
+                  console.error('chrome.tabs.sendMessage 不可用');
                 }
-              });
-            }
-          });
+              } else {
+                // 如果没有活动标签页，尝试获取任意标签页
+                try {
+                  chrome.tabs.query({}, function(allTabs) {
+                    if (allTabs && allTabs.length > 0) {
+                      const tab = allTabs[0];
+                          
+                      // 检查是否是允许发送消息的页面
+                      if (tab.url.startsWith('chrome://') || tab.url.startsWith('about:') || tab.url.startsWith('data:')) {
+                        console.log('无法向内部页面发送域名匹配消息:', tab.url);
+                        return;
+                      }
+                          
+                      // 检查chrome.tabs.sendMessage是否可用
+                      if (typeof chrome.tabs.sendMessage === 'function') {
+                        try {
+                          chrome.tabs.sendMessage(tab.id, {
+                            type: 'domain_script_matched',
+                            matchedScripts: matchedScripts,
+                            domain: hostname
+                          }, function(response) {
+                            // 检查是否发送失败
+                            if (chrome.runtime.lastError) {
+                              console.log('发送域名匹配消息失败:', chrome.runtime.lastError.message);
+                            }
+                          });
+                        } catch (error) {
+                          console.log('发送域名匹配消息异常:', error);
+                        }
+                      } else {
+                        console.error('chrome.tabs.sendMessage 不可用');
+                      }
+                    }
+                  });
+                } catch (queryError) {
+                  console.error('查询所有标签页时出错:', queryError);
+                }
+              }
+            });
+          } catch (error) {
+            console.error('查询活动标签页时出错:', error);
+          }
           
           console.log(`域名 ${hostname} 匹配到脚本:`, matchedScripts.map(s => s.scriptId));
           break; // 找到匹配后退出循环
