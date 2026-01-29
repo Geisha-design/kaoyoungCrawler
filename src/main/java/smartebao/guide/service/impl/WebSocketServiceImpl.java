@@ -1,6 +1,8 @@
 package smartebao.guide.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import smartebao.guide.entity.CrawlerClient;
@@ -36,6 +38,8 @@ public class WebSocketServiceImpl implements WebSocketService {
     @Autowired
     private ClientCacheService clientCacheService;
 
+    private static final Logger logger = LoggerFactory.getLogger(WebSocketServiceImpl.class);
+    
     // 存储WebSocket连接的映射关系
     private static final Map<String, Object> clientSessions = new ConcurrentHashMap<>();
 
@@ -235,13 +239,18 @@ public class WebSocketServiceImpl implements WebSocketService {
     public boolean isClientConnected(String clientId) {
         // 检查WebSocket会话是否在线
         boolean isWebSocketConnected = CrawlerWebSocketHandler.isClientOnline(clientId);
-        System.out.println("WebSocket连接状态: " + isWebSocketConnected);
         // 同时检查数据库状态
         boolean isDatabaseOnline = isClientOnlineInDatabase(clientId);
-        System.out.println("数据库连接状态: " + isDatabaseOnline);
 
         // 只有当WebSocket连接和数据库状态都表明客户端在线时才认为客户端已连接
-        return isWebSocketConnected && isDatabaseOnline;
+        boolean isConnected = isWebSocketConnected && isDatabaseOnline;
+        
+        if (logger.isDebugEnabled()) {
+            logger.debug("客户端 {} 连接状态: WebSocket={}, 数据库={}, 最终状态={}", 
+                clientId, isWebSocketConnected, isDatabaseOnline, isConnected);
+        }
+        
+        return isConnected;
     }
 
     @Override

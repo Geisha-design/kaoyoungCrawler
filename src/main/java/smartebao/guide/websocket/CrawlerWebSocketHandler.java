@@ -85,6 +85,20 @@ public class CrawlerWebSocketHandler {
                 }
             }
             
+            // 确保所有服务实例已初始化
+            if (clientCacheService == null) {
+                clientCacheService = WebSocketConfigurator.getClientCacheService();
+            }
+            if (webSocketService == null) {
+                webSocketService = WebSocketConfigurator.getWebSocketService();
+            }
+            if (crawlerClientMapper == null) {
+                crawlerClientMapper = WebSocketConfigurator.getCrawlerClientMapper();
+            }
+            if (crawlerResultMapper == null) {
+                crawlerResultMapper = WebSocketConfigurator.getCrawlerResultMapper();
+            }
+            
             if (!tokenValid || token == null || !jwtUtil.validateToken(token)) {
                 try {
                     // 发送403错误码并关闭连接
