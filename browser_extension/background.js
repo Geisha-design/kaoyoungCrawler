@@ -239,13 +239,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // 异步响应
   } else if (message.type === 'execute_script') {
     // 执行特定脚本
+    const taskId = message.taskId || null; // 从消息中获取taskId，如果没有则为null
+    
     // 确保Chrome API已准备就绪后再执行
     if (typeof chrome.tabs.query === 'function' && 
         typeof chrome.tabs.executeScript === 'function' && 
         typeof chrome.tabs.sendMessage === 'function') {
-      executeScriptOnActiveTab(message.scriptId, message.scriptContent)
+      executeScriptOnActiveTab(message.scriptId, message.scriptContent, taskId)
         .catch(error => {
           log(LogLevel.ERROR, '执行脚本时出错:', error);
+          if (taskId) {
+            sendCrawlResult(taskId, { error: error.message }, 'fail');
+          }
         });
     } else {
       log(LogLevel.ERROR, 'Chrome API 未完全加载，延迟执行脚本');
@@ -259,9 +264,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             typeof chrome.tabs.executeScript === 'function' && 
             typeof chrome.tabs.sendMessage === 'function') {
           log(LogLevel.INFO, `Chrome API 在第 ${retryCount} 次重试后可用，执行脚本`);
-          executeScriptOnActiveTab(message.scriptId, message.scriptContent)
+          executeScriptOnActiveTab(message.scriptId, message.scriptContent, taskId)
             .catch(error => {
               log(LogLevel.ERROR, '执行脚本时出错:', error);
+              if (taskId) {
+                sendCrawlResult(taskId, { error: error.message }, 'fail');
+              }
             });
         } else if (retryCount < maxRetries) {
           log(LogLevel.INFO, `Chrome API 仍不可用，第 ${retryCount} 次重试，等待 1 秒`);
@@ -269,8 +277,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         } else {
           log(LogLevel.ERROR, 'Chrome API 在最大重试次数后仍不可用');
           // 发送错误响应
-          if (message.scriptId) {
-            sendCrawlResult(null, { error: 'Chrome API not available for script execution after retries' }, 'fail');
+          if (taskId) {
+            sendCrawlResult(taskId, { error: 'Chrome API not available for script execution after retries' }, 'fail');
           }
         }
       };
@@ -335,7 +343,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             // 如果content script未加载，返回本地状态
             sendResponse({ 
               isIdle: state.clientIdleStatus, 
-              idleDuration: state.idleSince ? Date.now() - state.iidleSince : 0,
+              idleDuration: state.idleSince ? Date.now() - state.idleSince : 0,
               lastActivityTime: state.idleSince
             });
           } else {
