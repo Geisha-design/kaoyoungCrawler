@@ -58,6 +58,7 @@ public class CrawlerWebSocketHandler {
         try {
             // 从session中获取JWT token进行验证
             String token = getSessionAttribute(session, "token");
+
             
             // 检查token是否在握手阶段已验证
             Object tokenValidObj = session.getUserProperties().get("token_valid");
@@ -113,24 +114,26 @@ public class CrawlerWebSocketHandler {
             
             LogUtils.logInfo("WebSocket连接建立成功 - token: " + (token != null ? token.substring(0, Math.min(20, token.length())) + "..." : "null"));
             
-            // 从token中提取用户名，用于生成或查找clientId
+            // 从token中提取用户名
             String username = jwtUtil.getUsernameFromToken(token);
-            String clientId = generateOrGetClientId(username); // 根据用户名生成或获取已存在的clientId
+
+            // 由于clientId将由客户端插件提供，我们暂时使用一个临时ID直到收到register消息
+            String tempClientId = "temp_" + session.getId(); // 使用会话ID作为临时ID
             
-            LogUtils.logInfo("认证成功，准备发送认证成功消息 - clientId: " + clientId + ", username: " + username);
+            LogUtils.logInfo("WebSocket连接建立成功，等待客户端发送clientId - tempClientId: " + tempClientId + ", username: " + username);
             
             // 发送认证成功消息，通知客户端可以进行注册
             AuthSuccessMessage authMsg = new AuthSuccessMessage();
             authMsg.setType("auth_success");
-            authMsg.setPayload(new AuthSuccessPayload(clientId));
-            authMsg.setClientId(clientId);
+            authMsg.setPayload(new AuthSuccessPayload(null)); // 不包含实际的clientId，因为将由客户端提供
+            authMsg.setClientId(tempClientId);
             authMsg.setTimestamp(System.currentTimeMillis());
             sendMessage(session, JSON.toJSONString(authMsg));
             
-            // 临时将clientId存储在session中，等待register消息
-            session.getUserProperties().put("clientId", clientId);
+            // 临时将临时ID存储在session中，等待register消息
+            session.getUserProperties().put("tempClientId", tempClientId);
             
-            LogUtils.logInfo("已发送认证成功消息，等待客户端注册 - clientId: " + clientId + ", username: " + username);
+            LogUtils.logInfo("已发送认证成功消息，等待客户端注册 - tempClientId: " + tempClientId + ", username: " + username);
             LogUtils.logMethodExit(this.getClass().getSimpleName(), "onOpen", "Connection established");
         } finally {
             LogUtils.clearMDC(); // 清理MDC
@@ -177,6 +180,10 @@ public class CrawlerWebSocketHandler {
             MessageInfo msgInfo = JSON.parseObject(message, MessageInfo.class);
             String type = msgInfo.getType();
             String clientId = msgInfo.getClientId();
+
+            System.out.println("Received message: " + message);
+            System.out.println("Message type: " + type);
+            System.out.println("Client ID: " + clientId);
 
             switch (type) {
                 case "register":
@@ -239,7 +246,8 @@ public class CrawlerWebSocketHandler {
         
         try {
             RegisterPayload payload = JSON.toJavaObject((JSON) JSON.toJSON(msgInfo.getPayload()), RegisterPayload.class);
-            String clientId = msgInfo.getClientId();
+            String providedClientId = msgInfo.getClientId();
+
             String username = payload.getUsername();
             String currentUrl = payload.getCurrentUrl();
             String supportTaskTypes = payload.getSupportTaskTypes();
@@ -248,23 +256,23 @@ public class CrawlerWebSocketHandler {
             // 保存或更新客户端信息 注释掉 在登陆和登出接口即可
             smartebao.guide.entity.CrawlerClient client = crawlerClientMapper.selectOne(
                 new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<smartebao.guide.entity.CrawlerClient>()
-                    .eq("client_id", clientId)
+                    .eq("client_id", providedClientId)
                         .eq("username",username)
                         .eq("status","online"));
 
-            // 存储会话
-            sessionMap.put(clientId, session);
-            clientInfoMap.put(clientId, username);
+            // 存储会话，使用客户端提供的clientId
+            sessionMap.put(providedClientId, session);
+            clientInfoMap.put(providedClientId, username);
 
             // 更新缓存
             clientCacheService.cacheClientInfo(client);
-            clientCacheService.setClientOnlineStatus(clientId, true);
-            clientCacheService.setClientIdleStatus(clientId, idleStatus != null ? idleStatus : false);
+            clientCacheService.setClientOnlineStatus(providedClientId, true);
+            clientCacheService.setClientIdleStatus(providedClientId, idleStatus != null ? idleStatus : false);
 
             // 批量下发脚本
-            sendScriptsToClient(clientId, "batch");
+            sendScriptsToClient(providedClientId, "batch");
 
-            LogUtils.logInfo("客户端 " + clientId + " 注册成功，空闲状态: " + (idleStatus != null ? idleStatus : false));
+            LogUtils.logInfo("客户端 " + providedClientId + " 注册成功，空闲状态: " + (idleStatus != null ? idleStatus : false));
             LogUtils.logMethodExit(this.getClass().getSimpleName(), "handleRegister", "Client registered");
         } catch (Exception e) {
             LogUtils.logError("处理客户端注册时发生异常", e);
@@ -672,6 +680,7 @@ public class CrawlerWebSocketHandler {
         private String currentUrl;
         private String supportTaskTypes;
         private Boolean idleStatus; // 新增：空闲状态
+        private String clientId; // 新增：客户端ID
 
         // getter和setter
         public String getUsername() { return username; }
@@ -682,6 +691,8 @@ public class CrawlerWebSocketHandler {
         public void setSupportTaskTypes(String supportTaskTypes) { this.supportTaskTypes = supportTaskTypes; }
         public Boolean getIdleStatus() { return idleStatus; }
         public void setIdleStatus(Boolean idleStatus) { this.idleStatus = idleStatus; }
+        public String getClientId() { return clientId; }
+        public void setClientId(String clientId) { this.clientId = clientId; }
     }
 
     public static class UrlChangePayload {
@@ -905,24 +916,6 @@ public class CrawlerWebSocketHandler {
 //        public Long getTimestamp() { return timestamp; }
 //        public void setTimestamp(Long timestamp) { this.timestamp = timestamp; }
 //    }
-    
-    /**
-     * 根据用户名生成或获取已存在的clientId
-     */
-    private String generateOrGetClientId(String username) {
-        // 尝试从数据库中查找已存在的客户端ID
-        smartebao.guide.entity.CrawlerClient existingClient = crawlerClientMapper.selectOne(
-            new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<smartebao.guide.entity.CrawlerClient>()
-                .eq("username", username)
-                .last("LIMIT 1") // 只取一个结果
-        );
-        
-        if (existingClient != null) {
-            return existingClient.getClientId(); // 返回已存在的clientId
-        } else {
-            // 生成新的clientId
-            String newClientId = "client_" + System.currentTimeMillis() + "_" + Math.abs(username.hashCode());
-            return newClientId;
-        }
-    }
+
+
 }
