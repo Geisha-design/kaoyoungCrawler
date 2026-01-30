@@ -247,6 +247,9 @@ onMounted(() => {
   font-size: 1.5rem;
   font-weight: bold;
   color: var(--primary-color);
+  text-shadow: 0 0 10px var(--glow-color);
+  letter-spacing: 1px;
+  text-transform: uppercase;
 }
 
 .scripts-grid {
@@ -259,6 +262,12 @@ onMounted(() => {
   padding: 1rem;
   display: flex;
   flex-direction: column;
+  transition: all 0.3s ease;
+}
+
+.script-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 30px rgba(0, 240, 255, 0.2);
 }
 
 .script-header {
@@ -275,11 +284,13 @@ onMounted(() => {
   font-weight: bold;
   color: var(--primary-color);
   margin: 0;
+  text-shadow: 0 0 5px var(--glow-color);
 }
 
 .script-id {
   font-size: 0.875rem;
   color: var(--light-text);
+  font-family: 'Courier New', monospace;
 }
 
 .script-body {
@@ -300,28 +311,6 @@ onMounted(() => {
   justify-content: flex-end;
 }
 
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  width: 90%;
-  max-width: 600px;
-  max-height: 80vh;
-  padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-}
-
 .modal-header {
   display: flex;
   justify-content: space-between;
@@ -331,27 +320,51 @@ onMounted(() => {
   border-bottom: 2px solid var(--border-color);
 }
 
-.close-button {
-  background: none;
-  border: none;
-  font-size: 2rem;
-  color: var(--light-text);
-  cursor: pointer;
-  padding: 0;
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.close-button:hover {
+.modal-header h3 {
   color: var(--primary-color);
+  text-shadow: 0 0 10px var(--glow-color);
+  letter-spacing: 1px;
 }
 
 .script-form {
   flex: 1;
   overflow-y: auto;
+}
+
+.tech-form-group {
+  margin-bottom: 1.5rem;
+}
+
+.tech-form-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--light-text);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.tech-input {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  border-radius: 4px;
+  color: var(--text-color);
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  outline: none;
+  font-family: inherit;
+}
+
+.tech-input:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 15px var(--glow-color), inset 0 0 10px rgba(0, 240, 255, 0.1);
+  background: rgba(0, 240, 255, 0.05);
+}
+
+.tech-input::placeholder {
+  color: var(--light-text);
 }
 
 .form-actions {
@@ -375,17 +388,21 @@ onMounted(() => {
   font-weight: bold;
   color: var(--primary-color);
   margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 .view-value {
   color: var(--text-color);
+  font-family: 'Courier New', monospace;
 }
 
 .view-code {
-  background: #2d2d2d;
-  color: #f8f8f2;
+  background: rgba(20, 20, 30, 0.9);
+  color: var(--text-color);
   padding: 1rem;
   border-radius: 4px;
+  border: 1px solid var(--border-color);
   font-family: 'Courier New', monospace;
   font-size: 0.875rem;
   max-height: 400px;
@@ -393,5 +410,58 @@ onMounted(() => {
   margin: 0;
   white-space: pre-wrap;
   word-wrap: break-word;
+  position: relative;
+}
+
+.view-code::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--primary-color), transparent);
+  animation: codeGlow 3s ease-in-out infinite;
+}
+
+@keyframes codeGlow {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+.tech-empty {
+  text-align: center;
+  padding: 3rem;
+  color: var(--light-text);
+}
+
+.tech-empty-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.tech-loading {
+  text-align: center;
+  padding: 3rem;
+  color: var(--light-text);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.tech-loading::before {
+  content: '';
+  width: 50px;
+  height: 50px;
+  border: 3px solid rgba(0, 240, 255, 0.3);
+  border-top-color: var(--primary-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 </style>

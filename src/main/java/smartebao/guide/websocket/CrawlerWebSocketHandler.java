@@ -394,7 +394,7 @@ public class CrawlerWebSocketHandler {
                 LogUtils.logWarning("客户端 " + clientId + " JWT验证失败，可能已过期");
                 
                 // JWT无效，更新客户端状态为offline
-                webSocketService.updateClientStatus(clientId, "offline");
+                webSocketService.updateClientStatus(clientId, "online");
                 
                 // 更新缓存中的在线状态
                 if (clientCacheService != null) {
