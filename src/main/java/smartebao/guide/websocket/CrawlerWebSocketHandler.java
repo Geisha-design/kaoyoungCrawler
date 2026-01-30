@@ -200,6 +200,9 @@ public class CrawlerWebSocketHandler {
                 case "execute_script_response":
                     handleExecuteScriptResponse(msgInfo);
                     break;
+                case "client_disconnect":
+                    handleClientDisconnect(msgInfo, session);
+                    break;
                 default:
                     LogUtils.logWarning("收到未知类型消息: " + type);
                     break;
@@ -418,6 +421,42 @@ public class CrawlerWebSocketHandler {
             LogUtils.logMethodExit(this.getClass().getSimpleName(), "handleExecuteScriptResponse", "Script response processed");
         } catch (Exception e) {
             LogUtils.logError("处理脚本执行响应时发生异常", e);
+        } finally {
+            LogUtils.clearMDC(); // 清理MDC
+        }
+    }
+
+    /**
+     * 处理客户端断开连接请求
+     */
+    private void handleClientDisconnect(MessageInfo msgInfo, Session session) {
+        LogUtils.generateRequestId(); // 生成请求ID
+        LogUtils.logMethodEntry(this.getClass().getSimpleName(), "handleClientDisconnect", msgInfo.getClientId());
+        
+        try {
+            ClientDisconnectPayload payload = JSON.toJavaObject((JSON) JSON.toJSON(msgInfo.getPayload()), ClientDisconnectPayload.class);
+            String clientId = msgInfo.getClientId();
+            String reason = payload.getReason();
+            Long timestamp = payload.getTimestamp();
+
+            LogUtils.logInfo("收到客户端 " + clientId + " 的断开连接请求，原因: " + reason + ", 时间戳: " + new Date(timestamp));
+            
+            // 从会话映射中移除客户端
+            sessionMap.remove(clientId);
+            clientInfoMap.remove(clientId);
+            
+            // 更新客户端状态为offline
+            webSocketService.updateClientStatus(clientId, "offline");
+            
+            // 更新缓存状态
+            if (clientCacheService != null) {
+                clientCacheService.setClientOnlineStatus(clientId, false);
+            }
+            
+            LogUtils.logInfo("客户端 " + clientId + " 已处理断开连接请求");
+            LogUtils.logMethodExit(this.getClass().getSimpleName(), "handleClientDisconnect", "Client disconnect processed");
+        } catch (Exception e) {
+            LogUtils.logError("处理客户端断开连接请求时发生异常", e);
         } finally {
             LogUtils.clearMDC(); // 清理MDC
         }
@@ -709,6 +748,17 @@ public class CrawlerWebSocketHandler {
         public void setError(String error) { this.error = error; }
     }
 
+    public static class ClientDisconnectPayload {
+        private String reason;
+        private Long timestamp;
+
+        // getter和setter
+        public String getReason() { return reason; }
+        public void setReason(String reason) { this.reason = reason; }
+        public Long getTimestamp() { return timestamp; }
+        public void setTimestamp(Long timestamp) { this.timestamp = timestamp; }
+    }
+
     public static class AuthSuccessMessage {
         private String type;
         private AuthSuccessPayload payload;
@@ -844,6 +894,17 @@ public class CrawlerWebSocketHandler {
         public String getScriptContent() { return scriptContent; }
         public void setScriptContent(String scriptContent) { this.scriptContent = scriptContent; }
     }
+    
+//    public static class ClientDisconnectPayload {
+//        private String reason;
+//        private Long timestamp;
+//
+//        // getter和setter
+//        public String getReason() { return reason; }
+//        public void setReason(String reason) { this.reason = reason; }
+//        public Long getTimestamp() { return timestamp; }
+//        public void setTimestamp(Long timestamp) { this.timestamp = timestamp; }
+//    }
     
     /**
      * 根据用户名生成或获取已存在的clientId

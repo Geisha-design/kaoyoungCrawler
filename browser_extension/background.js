@@ -1360,6 +1360,64 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 //   }
 // });
 
+// 监听浏览器关闭事件，在浏览器关闭时清理登录状态
+chrome.runtime.onSuspend.addListener(() => {
+  log(LogLevel.INFO, '浏览器扩展即将关闭，开始清理登录状态');
+  
+  // 如果当前已连接WebSocket，先关闭连接并通知后端
+  if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+    // 发送登出消息到后端
+    const logoutMessage = {
+      type: 'client_disconnect',
+      payload: {
+        reason: 'browser_closed',
+        timestamp: Date.now()
+      },
+      clientId: state.clientId,
+      timestamp: Date.now()
+    };
+    
+    try {
+      state.ws.send(JSON.stringify(logoutMessage));
+      log(LogLevel.INFO, '已发送浏览器关闭通知到服务端');
+    } catch (error) {
+      log(LogLevel.WARN, '发送浏览器关闭消息失败:', error);
+    }
+    
+    // 关闭WebSocket连接
+    try {
+      state.ws.close();
+      log(LogLevel.INFO, '已关闭WebSocket连接');
+    } catch (error) {
+      log(LogLevel.WARN, '关闭WebSocket连接时出错:', error);
+    }
+  }
+  
+  // 停止心跳定时器
+  if (state.heartbeatInterval) {
+    clearInterval(state.heartbeatInterval);
+    state.heartbeatInterval = null;
+    log(LogLevel.INFO, '已停止心跳定时器');
+  }
+  
+  // 清理本地存储的JWT令牌和用户名，但保留clientId（客户端唯一标识）
+  chrome.storage.local.remove(['jwtToken', 'username'], function() {
+    if (chrome.runtime.lastError) {
+      log(LogLevel.WARN, '清理本地存储时出错:', chrome.runtime.lastError);
+    } else {
+      log(LogLevel.INFO, '已清理JWT令牌和用户名');
+    }
+  });
+  
+  // 重置内部状态
+  state.isConnected = false;
+  state.jwtToken = null;
+  state.username = null;
+  state.ws = null;
+  
+  log(LogLevel.INFO, '浏览器扩展关闭状态清理完成');
+});
+
 // 从这里开始移除与客户端定时任务相关的函数
 function executeIdleTasks(idleSince, currentTime) {
   log(LogLevel.INFO, `执行空闲任务，自 ${new Date(idleSince)} 开始空闲`);
