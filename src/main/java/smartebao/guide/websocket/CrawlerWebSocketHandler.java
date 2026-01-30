@@ -117,23 +117,23 @@ public class CrawlerWebSocketHandler {
             // 从token中提取用户名
             String username = jwtUtil.getUsernameFromToken(token);
 
-            // 由于clientId将由客户端插件提供，我们暂时使用一个临时ID直到收到register消息
-            String tempClientId = "temp_" + session.getId(); // 使用会话ID作为临时ID
+            // 从session中获取客户端插件提供的clientId
+            String providedClientId = getSessionAttribute(session, "clientId");
             
-            LogUtils.logInfo("WebSocket连接建立成功，等待客户端发送clientId - tempClientId: " + tempClientId + ", username: " + username);
+            LogUtils.logInfo("WebSocket连接建立成功，客户端ID: " + providedClientId + ", username: " + username);
             
             // 发送认证成功消息，通知客户端可以进行注册
             AuthSuccessMessage authMsg = new AuthSuccessMessage();
             authMsg.setType("auth_success");
-            authMsg.setPayload(new AuthSuccessPayload(null)); // 不包含实际的clientId，因为将由客户端提供
-            authMsg.setClientId(tempClientId);
+            authMsg.setPayload(new AuthSuccessPayload(providedClientId)); // 包含客户端提供的clientId
+            authMsg.setClientId(providedClientId != null ? providedClientId : "temp_" + session.getId());
             authMsg.setTimestamp(System.currentTimeMillis());
             sendMessage(session, JSON.toJSONString(authMsg));
             
-            // 临时将临时ID存储在session中，等待register消息
-            session.getUserProperties().put("tempClientId", tempClientId);
+            // 将客户端ID存储在session中，用于后续注册
+            session.getUserProperties().put("clientId", providedClientId);
             
-            LogUtils.logInfo("已发送认证成功消息，等待客户端注册 - tempClientId: " + tempClientId + ", username: " + username);
+            LogUtils.logInfo("已发送认证成功消息，等待客户端注册 - clientId: " + providedClientId + ", username: " + username);
             LogUtils.logMethodExit(this.getClass().getSimpleName(), "onOpen", "Connection established");
         } finally {
             LogUtils.clearMDC(); // 清理MDC
@@ -789,6 +789,7 @@ public class CrawlerWebSocketHandler {
 
     public static class AuthSuccessPayload {
         private String clientId;
+        private String username;
 
         public AuthSuccessPayload(String clientId) {
             this.clientId = clientId;
@@ -797,6 +798,8 @@ public class CrawlerWebSocketHandler {
         // getter和setter
         public String getClientId() { return clientId; }
         public void setClientId(String clientId) { this.clientId = clientId; }
+        public String getUsername() { return username; }
+        public void setUsername(String username) { this.username = username; }
     }
 
     public static class ScriptPushMessage {

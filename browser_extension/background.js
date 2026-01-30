@@ -472,7 +472,7 @@ function connectWebSocket() {
   }
   
   try {
-    const wsUrl = `ws://localhost:8090/smarteCrawler/ws?token=${state.jwtToken}`;
+    const wsUrl = `ws://localhost:8090/smarteCrawler/ws?token=${state.jwtToken}&clientId=${encodeURIComponent(state.clientId)}`;
     log(LogLevel.INFO, '尝试连接WebSocket:', wsUrl);
     state.ws = new WebSocket(wsUrl);
     

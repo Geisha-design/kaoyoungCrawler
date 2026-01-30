@@ -40,12 +40,16 @@ public class WebSocketConfigurator extends Configurator implements ApplicationCo
             String queryString = request.getQueryString();
             String[] params = queryString.split("&");
             String token = null;
+            String clientId = null;
             
             for (String param : params) {
                 String[] keyValue = param.split("=");
-                if (keyValue.length >= 2 && "token".equals(keyValue[0])) {
-                    token = keyValue[1];
-                    break;
+                if (keyValue.length >= 2) {
+                    if ("token".equals(keyValue[0])) {
+                        token = keyValue[1];
+                    } else if ("clientId".equals(keyValue[0])) {
+                        clientId = keyValue[1];
+                    }
                 }
             }
             
@@ -58,7 +62,11 @@ public class WebSocketConfigurator extends Configurator implements ApplicationCo
                     // 验证通过，存储token
                     sec.getUserProperties().put("token", token);
                     sec.getUserProperties().put("token_valid", true);
-                    System.out.println("WebSocket握手认证成功: " + token.substring(0, Math.min(20, token.length())) + "...");
+                    // 存储客户端ID
+                    if (clientId != null) {
+                        sec.getUserProperties().put("clientId", clientId);
+                    }
+                    System.out.println("WebSocket握手认证成功: " + token.substring(0, Math.min(20, token.length())) + "..., clientId: " + clientId);
                 } else {
                     // 验证失败，标记为无效
                     sec.getUserProperties().put("token_valid", false);
