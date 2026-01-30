@@ -1,19 +1,19 @@
 <template>
   <div class="scripts-page">
-    <div class="ancient-card scripts-card">
+    <div class="tech-card scripts-card">
       <div class="card-header">
         <h3 class="card-title">脚本管理</h3>
-        <button @click="showCreateModal = true" class="ancient-button">
+        <button @click="showCreateModal = true" class="tech-button">
           新建脚本
         </button>
       </div>
       
-      <div v-if="loading" class="ancient-loading">
+      <div v-if="loading" class="tech-loading">
         加载中...
       </div>
       
-      <div v-else-if="scripts.length === 0" class="ancient-empty">
-        <div class="ancient-empty-icon">📜</div>
+      <div v-else-if="scripts.length === 0" class="tech-empty">
+        <div class="tech-empty-icon">📜</div>
         <p>暂无脚本</p>
       </div>
       
@@ -21,7 +21,7 @@
         <div
           v-for="script in scripts"
           :key="script.scriptId"
-          class="script-card ancient-card"
+          class="script-card tech-card"
         >
           <div class="script-header">
             <h4 class="script-title">{{ script.description }}</h4>
@@ -35,22 +35,22 @@
           <div class="script-footer">
             <button
               @click="viewScript(script)"
-              class="ancient-button secondary"
+              class="tech-button tech-button-secondary"
               style="padding: 6px 12px; font-size: 0.875rem;"
             >
               查看
             </button>
             <button
               @click="editScript(script)"
-              class="ancient-button"
+              class="tech-button"
               style="padding: 6px 12px; font-size: 0.875rem;"
             >
               编辑
             </button>
             <button
               @click="deleteScript(script.scriptId)"
-              class="ancient-button danger"
-              style="padding: 6px 12px; font-size: 0.875rem;"
+              class="tech-button tech-button-secondary"
+              style="padding: 6px 12px; font-size: 0.875rem; border-color: var(--error-color); color: var(--error-color);"
             >
               删除
             </button>
@@ -59,30 +59,30 @@
       </div>
     </div>
     
-    <div v-if="showCreateModal || showEditModal" class="modal-overlay" @click="closeModal">
-      <div class="modal-content ancient-card" @click.stop>
+    <div v-if="showCreateModal || showEditModal" class="tech-modal" @click="closeModal">
+      <div class="tech-modal-content" @click.stop>
         <div class="modal-header">
           <h3>{{ showCreateModal ? '新建脚本' : '编辑脚本' }}</h3>
-          <button @click="closeModal" class="close-button">×</button>
+          <button @click="closeModal" class="tech-modal-close">×</button>
         </div>
         
         <form @submit.prevent="saveScript" class="script-form">
-          <div class="ancient-form-group">
-            <label class="ancient-form-label">脚本描述</label>
+          <div class="tech-form-group">
+            <label class="tech-form-label">脚本描述</label>
             <input
               v-model="formData.description"
               type="text"
-              class="ancient-input"
+              class="tech-input"
               placeholder="请输入脚本描述"
               required
             />
           </div>
           
-          <div class="ancient-form-group">
-            <label class="ancient-form-label">脚本内容</label>
+          <div class="tech-form-group">
+            <label class="tech-form-label">脚本内容</label>
             <textarea
               v-model="formData.content"
-              class="ancient-input"
+              class="tech-input"
               placeholder="请输入脚本内容"
               rows="10"
               required
@@ -90,10 +90,10 @@
           </div>
           
           <div class="form-actions">
-            <button type="button" @click="closeModal" class="ancient-button secondary">
+            <button type="button" @click="closeModal" class="tech-button tech-button-secondary">
               取消
             </button>
-            <button type="submit" class="ancient-button" :disabled="saving">
+            <button type="submit" class="tech-button" :disabled="saving">
               {{ saving ? '保存中...' : '保存' }}
             </button>
           </div>
@@ -101,11 +101,11 @@
       </div>
     </div>
     
-    <div v-if="showViewModal" class="modal-overlay" @click="closeViewModal">
-      <div class="modal-content ancient-card" @click.stop>
+    <div v-if="showViewModal" class="tech-modal" @click="closeViewModal">
+      <div class="tech-modal-content" @click.stop>
         <div class="modal-header">
           <h3>脚本详情</h3>
-          <button @click="closeViewModal" class="close-button">×</button>
+          <button @click="closeViewModal" class="tech-modal-close">×</button>
         </div>
         
         <div class="script-view">

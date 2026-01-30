@@ -257,15 +257,16 @@ public class CrawlerWebSocketHandler {
             smartebao.guide.entity.CrawlerClient client = crawlerClientMapper.selectOne(
                 new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<smartebao.guide.entity.CrawlerClient>()
                     .eq("client_id", providedClientId)
-                        .eq("username",username)
-                        .eq("status","online"));
+                        .eq("username",username));
 
             // 存储会话，使用客户端提供的clientId
             sessionMap.put(providedClientId, session);
             clientInfoMap.put(providedClientId, username);
 
-            // 更新缓存
-            clientCacheService.cacheClientInfo(client);
+            // 更新缓存 - 只有当client不为null时才缓存
+            if (client != null) {
+                clientCacheService.cacheClientInfo(client);
+            }
             clientCacheService.setClientOnlineStatus(providedClientId, true);
             clientCacheService.setClientIdleStatus(providedClientId, idleStatus != null ? idleStatus : false);
 
@@ -375,8 +376,36 @@ public class CrawlerWebSocketHandler {
             // 更新心跳时间到缓存
             webSocketService.updateClientHeartbeat(clientId);
             
+            // 从心跳消息中获取JWT token并验证，然后更新客户端状态为online
+            HeartbeatPayload payload = JSON.toJavaObject((JSON) JSON.toJSON(msgInfo.getPayload()), HeartbeatPayload.class);
+            String token = payload.getToken();
+            
+            if (token != null && jwtUtil != null && jwtUtil.validateToken(token)) {
+                // JWT有效，更新客户端状态为online
+                webSocketService.updateClientStatus(clientId, "online");
+                
+                // 更新缓存中的在线状态
+                if (clientCacheService != null) {
+                    clientCacheService.setClientOnlineStatus(clientId, true);
+                }
+                
+                LogUtils.logInfo("客户端 " + clientId + " 心跳验证成功，JWT有效，状态更新为online");
+            } else {
+                LogUtils.logWarning("客户端 " + clientId + " JWT验证失败，可能已过期");
+                
+                // JWT无效，更新客户端状态为offline
+                webSocketService.updateClientStatus(clientId, "offline");
+                
+                // 更新缓存中的在线状态
+                if (clientCacheService != null) {
+                    clientCacheService.setClientOnlineStatus(clientId, false);
+                }
+            }
+            
             LogUtils.logInfo("收到客户端 " + clientId + " 的心跳，时间戳: " + new Date(timestamp));
             LogUtils.logMethodExit(this.getClass().getSimpleName(), "handleHeartbeat", "Heartbeat processed");
+        } catch (Exception e) {
+            LogUtils.logError("处理心跳消息时发生异常", e);
         } finally {
             LogUtils.clearMDC(); // 清理MDC
         }
@@ -909,16 +938,15 @@ public class CrawlerWebSocketHandler {
         public void setScriptContent(String scriptContent) { this.scriptContent = scriptContent; }
     }
     
-//    public static class ClientDisconnectPayload {
-//        private String reason;
-//        private Long timestamp;
-//
-//        // getter和setter
-//        public String getReason() { return reason; }
-//        public void setReason(String reason) { this.reason = reason; }
-//        public Long getTimestamp() { return timestamp; }
-//        public void setTimestamp(Long timestamp) { this.timestamp = timestamp; }
-//    }
+    public static class HeartbeatPayload {
+        private Long timestamp;
+        private String token;
 
+        // getter和setter
+        public Long getTimestamp() { return timestamp; }
+        public void setTimestamp(Long timestamp) { this.timestamp = timestamp; }
+        public String getToken() { return token; }
+        public void setToken(String token) { this.token = token; }
+    }
 
 }

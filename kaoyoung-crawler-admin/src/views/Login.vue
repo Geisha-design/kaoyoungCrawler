@@ -1,31 +1,31 @@
 <template>
-  <div class="ancient-container">
+  <div class="tech-container">
     <div class="login-wrapper">
-      <div class="ancient-card login-card">
-        <h1 class="ancient-title">考优爬虫管理系统</h1>
+      <div class="tech-card login-card">
+        <h1 class="tech-title">考优爬虫管理系统</h1>
         
-        <div v-if="error" class="ancient-alert error">
+        <div v-if="error" class="tech-alert tech-alert-error">
           {{ error }}
         </div>
         
         <form @submit.prevent="handleLogin">
-          <div class="ancient-form-group">
-            <label class="ancient-form-label">用户名</label>
+          <div class="tech-form-group">
+            <label class="tech-form-label">用户名</label>
             <input
               v-model="formData.username"
               type="text"
-              class="ancient-input"
+              class="tech-input"
               placeholder="请输入用户名"
               required
             />
           </div>
           
-          <div class="ancient-form-group">
-            <label class="ancient-form-label">密码</label>
+          <div class="tech-form-group">
+            <label class="tech-form-label">密码</label>
             <input
               v-model="formData.password"
               type="password"
-              class="ancient-input"
+              class="tech-input"
               placeholder="请输入密码"
               required
             />
@@ -33,7 +33,7 @@
           
           <button
             type="submit"
-            class="ancient-button login-button"
+            class="tech-button login-button"
             :disabled="loading"
           >
             {{ loading ? '登录中...' : '登录' }}
@@ -42,7 +42,7 @@
         
         <div class="login-footer">
           <span>还没有账号？</span>
-          <router-link to="/register" class="ancient-link">立即注册</router-link>
+          <router-link to="/register" class="tech-link">立即注册</router-link>
         </div>
       </div>
     </div>
@@ -96,12 +96,37 @@ const handleLogin = async () => {
   align-items: center;
   min-height: 100vh;
   padding: 2rem;
+  position: relative;
+  z-index: 1;
 }
 
 .login-card {
   width: 100%;
   max-width: 400px;
   padding: 2.5rem;
+}
+
+.tech-title {
+  text-align: center;
+  font-size: 2rem;
+  margin-bottom: 2rem;
+  color: var(--primary-color);
+  text-shadow: 0 0 20px var(--glow-color);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.tech-form-group {
+  margin-bottom: 1.5rem;
+}
+
+.tech-form-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--light-text);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 .login-button {
@@ -117,5 +142,33 @@ const handleLogin = async () => {
 
 .login-footer span {
   margin-right: 0.5rem;
+}
+
+.tech-link {
+  color: var(--primary-color);
+  text-decoration: none;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.tech-link::before {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: var(--primary-color);
+  transition: width 0.3s ease;
+  box-shadow: 0 0 10px var(--glow-color);
+}
+
+.tech-link:hover {
+  color: var(--primary-color);
+  text-shadow: 0 0 10px var(--glow-color);
+}
+
+.tech-link:hover::before {
+  width: 100%;
 }
 </style>

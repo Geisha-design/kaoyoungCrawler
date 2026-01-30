@@ -577,10 +577,18 @@ function sendHeartbeat() {
     return;
   }
   
+  // 确保JWT token存在
+  if (!state.jwtToken) {
+    log(LogLevel.ERROR, 'JWT Token未初始化，无法发送心跳');
+    stopHeartbeat();
+    return;
+  }
+  
   const heartbeatMessage = {
     type: 'heartbeat',
     payload: {
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      token: state.jwtToken  // 添加JWT token到心跳消息中
     },
     clientId: state.clientId,
     timestamp: Date.now()

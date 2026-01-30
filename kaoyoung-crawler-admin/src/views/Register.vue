@@ -1,46 +1,46 @@
 <template>
-  <div class="ancient-container">
+  <div class="tech-container">
     <div class="register-wrapper">
-      <div class="ancient-card register-card">
-        <h1 class="ancient-title">注册新账号</h1>
+      <div class="tech-card register-card">
+        <h1 class="tech-title">注册新账号</h1>
         
-        <div v-if="error" class="ancient-alert error">
+        <div v-if="error" class="tech-alert tech-alert-error">
           {{ error }}
         </div>
         
-        <div v-if="success" class="ancient-alert success">
+        <div v-if="success" class="tech-alert tech-alert-success">
           {{ success }}
         </div>
         
         <form @submit.prevent="handleRegister">
-          <div class="ancient-form-group">
-            <label class="ancient-form-label">用户名</label>
+          <div class="tech-form-group">
+            <label class="tech-form-label">用户名</label>
             <input
               v-model="formData.username"
               type="text"
-              class="ancient-input"
+              class="tech-input"
               placeholder="请输入用户名"
               required
             />
           </div>
           
-          <div class="ancient-form-group">
-            <label class="ancient-form-label">密码</label>
+          <div class="tech-form-group">
+            <label class="tech-form-label">密码</label>
             <input
               v-model="formData.password"
               type="password"
-              class="ancient-input"
+              class="tech-input"
               placeholder="请输入密码"
               required
             />
           </div>
           
-          <div class="ancient-form-group">
-            <label class="ancient-form-label">确认密码</label>
+          <div class="tech-form-group">
+            <label class="tech-form-label">确认密码</label>
             <input
               v-model="formData.confirmPassword"
               type="password"
-              class="ancient-input"
+              class="tech-input"
               placeholder="请再次输入密码"
               required
             />
@@ -48,7 +48,7 @@
           
           <button
             type="submit"
-            class="ancient-button register-button"
+            class="tech-button register-button"
             :disabled="loading"
           >
             {{ loading ? '注册中...' : '注册' }}
@@ -57,7 +57,7 @@
         
         <div class="register-footer">
           <span>已有账号？</span>
-          <router-link to="/login" class="ancient-link">立即登录</router-link>
+          <router-link to="/login" class="tech-link">立即登录</router-link>
         </div>
       </div>
     </div>
@@ -128,12 +128,37 @@ const handleRegister = async () => {
   align-items: center;
   min-height: 100vh;
   padding: 2rem;
+  position: relative;
+  z-index: 1;
 }
 
 .register-card {
   width: 100%;
   max-width: 400px;
   padding: 2.5rem;
+}
+
+.tech-title {
+  text-align: center;
+  font-size: 2rem;
+  margin-bottom: 2rem;
+  color: var(--primary-color);
+  text-shadow: 0 0 20px var(--glow-color);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.tech-form-group {
+  margin-bottom: 1.5rem;
+}
+
+.tech-form-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--light-text);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 .register-button {
@@ -149,5 +174,33 @@ const handleRegister = async () => {
 
 .register-footer span {
   margin-right: 0.5rem;
+}
+
+.tech-link {
+  color: var(--primary-color);
+  text-decoration: none;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.tech-link::before {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: var(--primary-color);
+  transition: width 0.3s ease;
+  box-shadow: 0 0 10px var(--glow-color);
+}
+
+.tech-link:hover {
+  color: var(--primary-color);
+  text-shadow: 0 0 10px var(--glow-color);
+}
+
+.tech-link:hover::before {
+  width: 100%;
 }
 </style>
